@@ -6,7 +6,7 @@ Mothership Ventures LLC project. LORD writes specs, OPR (Claude Code) builds to 
 React + Vite + TypeScript, Tailwind v4 (`@tailwindcss/vite`, CSS-first config, not v3), react-router, vite-plugin-pwa, Supabase JS client, Vitest. Hosting: Vercel (preview per branch, production from `main`). Android-first PWA; iOS is deferred, no iOS workarounds.
 
 ## Node
-Node 20 (`>=20.19 <21`), pinned in `.nvmrc` and `package.json` engines. Required by Vite 8 / Vitest 4.
+Node 20 (`20.x`), pinned in `.nvmrc` and `package.json` engines. Vite 8 needs 20.19 or newer within 20.x. Vercel project setting is also 20.x; keep the three in sync.
 
 ## Commands
 - `npm install`
