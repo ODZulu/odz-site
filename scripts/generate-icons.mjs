@@ -1,5 +1,21 @@
+// Regenerates the PWA icons and favicon into public/ from the team seal (never redrawn).
+// The maskable icon sits the seal on the `ground` token inside the 80% safe zone.
+import { readFileSync } from 'node:fs'
 import sharp from 'sharp'
-const svg = (size, pad) => Buffer.from(
-  `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 512 512"><rect width="512" height="512" fill="#0b0f0c"/><g transform="translate(256 256) scale(${pad}) translate(-256 -256)"><text x="256" y="320" font-family="monospace" font-size="190" font-weight="700" text-anchor="middle" fill="#7fb069">ODZ</text></g></svg>`)
-const out = [['pwa-192x192.png', 192, 1], ['pwa-512x512.png', 512, 1], ['maskable-icon-512x512.png', 512, 0.7]]
-for (const [name, size, pad] of out) await sharp(svg(size, pad)).png().toFile(`public/${name}`)
+
+const tokens = JSON.parse(readFileSync('src/design/tokens.json', 'utf8'))
+const ground = tokens.color.tokens.find((t) => t.name === 'ground').value
+const patch = 'src/assets/logos/odz-logo-patch.png'
+
+const plain = (size) => sharp(patch).resize(size, size)
+
+await plain(192).png().toFile('public/pwa-192x192.png')
+await plain(512).png().toFile('public/pwa-512x512.png')
+await plain(64).png().toFile('public/favicon.png')
+
+const inner = Math.round(512 * 0.7)
+const seal = await plain(inner).png().toBuffer()
+await sharp({ create: { width: 512, height: 512, channels: 4, background: ground } })
+  .composite([{ input: seal, gravity: 'center' }])
+  .png()
+  .toFile('public/maskable-icon-512x512.png')

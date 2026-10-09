@@ -1,0 +1,49 @@
+/* ODZ — Field Standard tokens. Generated from tokens.json; edit that, not this. MVA-139: px values converted to rem (px/16) by hand; redo the conversion if regenerated. */
+:root {
+  /* colour */
+  --ground: #232b1d;
+  --surface: #2f3a26;
+  --surface-raised: #36432c;
+  --deep: #151a12;
+  --line: #4a5840;
+  --line-strong: #8a9677;
+  --ink: #ece3cc;
+  --ink-muted: #bdb294;
+  --primary: #cdae78;
+  --on-primary: #151a12;
+  --accent: #eb9a52;
+  --on-accent: #151a12;
+  --go: #a6d86f;
+  --pending: #e6c35c;
+  --alert: #f58f76;
+  --focus: #f2d45c;
+  --mark-navy: #192f5d;
+  --mark-red: #bd3d44;
+  --mark-gold: #ffd608;
+  --mark-copper: #b87333;
+  --mark-ink: #061120;
+  /* spacing */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-12: 3rem;
+  /* radius */
+  --radius-0: 0;
+  --radius-1: 0.125rem;
+  --radius-full: 624.9375rem;
+  /* font stacks */
+  --font-field-display: "Saira Stencil One", "Saira Condensed", sans-serif;
+  --font-field-head: "Saira Condensed", "Arial Narrow", sans-serif;
+  --font-field-body: "Saira", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+/* type styles */
+.field-hero { font-family: var(--font-field-display); font-size: 7rem; line-height: 0.9; font-weight: 400; }
+.field-title { font-family: var(--font-field-head); font-size: 2.25rem; line-height: 2.5rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; }
+.field-heading { font-family: var(--font-field-head); font-size: 1.25rem; line-height: 1.5rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.field-label { font-family: var(--font-field-head); font-size: 0.75rem; line-height: 1rem; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; }
+.field-body { font-family: var(--font-field-body); font-size: 0.9375rem; line-height: 1.4375rem; font-weight: 400; }
+.data { font-family: var(--font-mono); font-size: 0.8125rem; line-height: 1.25rem; font-weight: 400; }

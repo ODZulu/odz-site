@@ -1,8 +1,14 @@
+import { Panel } from '../components'
+
 export default function Login() {
   return (
-    <section>
-      <h1 className="text-2xl font-bold">Login</h1>
-      <p className="mt-2 text-neutral-400">Login placeholder. No auth yet.</p>
-    </section>
+    <>
+      <h1 className="odz-title" style={{ marginBottom: '1rem' }}>
+        Sign in
+      </h1>
+      <Panel title="Access">
+        <p className="odz-muted">Placeholder. No auth yet.</p>
+      </Panel>
+    </>
   )
 }

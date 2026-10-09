@@ -1,8 +1,14 @@
+import { Panel } from '../components'
+
 export default function Calendar() {
   return (
-    <section>
-      <h1 className="text-2xl font-bold">Calendar</h1>
-      <p className="mt-2 text-neutral-400">Public calendar placeholder.</p>
-    </section>
+    <>
+      <h1 className="odz-title" style={{ marginBottom: '1rem' }}>
+        Calendar
+      </h1>
+      <Panel title="Public calendar">
+        <p className="odz-muted">Placeholder. Events arrive with the calendar ticket.</p>
+      </Panel>
+    </>
   )
 }
