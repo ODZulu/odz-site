@@ -16,7 +16,9 @@ Apply files in filename order to the ODZ Supabase project (SQL editor or `supaba
 
 ## Current schema (MVA-198)
 
-`20261009160000_db_foundation.sql`: `tiers`, `capabilities`, `tier_capabilities`, `profiles`, the signup trigger, `has_capability()`, RLS on all four tables, and the seed ladder (Command, Old Guard, Member, Prospect, Recruit). Lower `rank` means more authority. `Member` is seeded as the default tier on approval (`is_default_for_approval`); change it in the tiers table if that is wrong.
+`20261009160000_db_foundation.sql`: `tiers`, `capabilities`, `tier_capabilities`, `profiles`, the signup trigger, `has_capability()`, RLS on all four tables, and the first seed.
+
+`20261010180000_tier_model_and_audit.sql`: Dax decisions of 2026-10-09 and 10-10. Ladder is Command > Old Guard > Member > Contractor > Prospect > Recruit (Admin is the `is_admin` flag, not a tier); lower `rank` means more authority. Command requires Old Guard to enter and releases back to Old Guard, stored as data on the tier (`entry_requires_tier_id`, `release_to_tier_id`). New `edit_roster` capability (Command by default) governs tier changes; `approve_members` governs status, and may assign the tier when approving a pending account. `profile_audit` records who changed status, tier or admin and when (append-only, written by trigger, readable by approvers and roster editors). Recruit is the default tier on approval.
 
 ## Bootstrap the first admin (manual, once)
 

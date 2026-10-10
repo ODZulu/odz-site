@@ -1,7 +1,10 @@
 import patch from '../assets/logos/odz-logo-patch.png'
 import { ButtonLink } from '../components'
 
-/** Public splash (`/`). Sign-in fields wait on the auth ticket (MVA-199); these are plain links. */
+/**
+ * Public splash (`/`). Login only: no sign-up, join or request-access button and no description
+ * of how people are admitted (signup is invite-only, MVA-199). Sign-in fields wait on that ticket.
+ */
 export default function Landing() {
   return (
     <div className="odz odz-splash">
@@ -27,11 +30,8 @@ export default function Landing() {
             <em>Aut viam aut faciam.</em> We find a way, or we make one.
           </p>
           <div className="odz-row" style={{ marginTop: '1.5rem' }}>
-            <ButtonLink to="/hq" block>
-              Enter HQ
-            </ButtonLink>
-            <ButtonLink to="/login" variant="sec" block>
-              Request access
+            <ButtonLink to="/login" block>
+              Sign in
             </ButtonLink>
           </div>
         </div>

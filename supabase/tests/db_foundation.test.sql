@@ -1,4 +1,4 @@
--- Tier 1 database tests for MVA-198. Plain SQL, no extensions.
+-- Tier 1 database tests for MVA-198 (both migrations). Plain SQL, no extensions.
 -- Run against a dev or branch database (SQL editor, psql, or MCP execute_sql).
 -- Everything happens inside one transaction that is rolled back, and all users are fake.
 -- Success: the notice "db_foundation: ALL PASS". Any failure raises an exception.
@@ -12,12 +12,19 @@ declare
   v_command uuid := '00000000-0000-0000-0000-0000000000c1';
   v_member  uuid := '00000000-0000-0000-0000-0000000000b1';
   v_pending uuid := '00000000-0000-0000-0000-0000000000d1';
+  v_pending2 uuid := '00000000-0000-0000-0000-0000000000d2';
+  v_clerk   uuid := '00000000-0000-0000-0000-0000000000e1';
   t_command uuid;
+  t_oldguard uuid;
   t_member  uuid;
+  t_contractor uuid;
+  t_clerk   uuid;
   n integer;
 begin
   select id into t_command from public.tiers where name = 'Command';
+  select id into t_oldguard from public.tiers where name = 'Old Guard';
   select id into t_member  from public.tiers where name = 'Member';
+  select id into t_contractor from public.tiers where name = 'Contractor';
 
   -- Fake users; the signup trigger must give each a pending profile.
   insert into auth.users (id, email, aud, role) values
@@ -25,15 +32,25 @@ begin
     (v_admin2,  'admin2@example.invalid',  'authenticated', 'authenticated'),
     (v_command, 'command@example.invalid', 'authenticated', 'authenticated'),
     (v_member,  'member@example.invalid',  'authenticated', 'authenticated'),
-    (v_pending, 'pending@example.invalid', 'authenticated', 'authenticated');
+    (v_pending, 'pending@example.invalid', 'authenticated', 'authenticated'),
+    (v_pending2, 'pending2@example.invalid', 'authenticated', 'authenticated'),
+    (v_clerk,   'clerk@example.invalid',   'authenticated', 'authenticated');
 
   select count(*) into n from public.profiles where status = 'pending' and tier_id is null
-    and id in (v_admin, v_admin2, v_command, v_member, v_pending);
-  if n <> 5 then raise exception 'FAIL: signup trigger did not create 5 pending profiles (got %)', n; end if;
+    and id in (v_admin, v_admin2, v_command, v_member, v_pending, v_pending2, v_clerk);
+  if n <> 7 then raise exception 'FAIL: signup trigger did not create 7 pending profiles (got %)', n; end if;
 
   -- Trusted setup (no JWT): one admin, a Command, a Member.
   update public.profiles set status = 'approved', is_admin = true where id = v_admin;
-  update public.profiles set status = 'approved', tier_id = t_command where id = v_command;
+  -- Command requires Old Guard first.
+  update public.profiles set status = 'approved', tier_id = t_oldguard where id = v_command;
+  update public.profiles set tier_id = t_command where id = v_command;
+
+  -- A custom tier that can approve accounts but not edit the roster.
+  insert into public.tiers (name, rank) values ('Clerk', 99) returning id into t_clerk;
+  insert into public.tier_capabilities (tier_id, capability_key) values
+    (t_clerk, 'approve_members'), (t_clerk, 'read_minutes'), (t_clerk, 'read_event_details');
+  update public.profiles set status = 'approved', tier_id = t_clerk where id = v_clerk;
   update public.profiles set status = 'approved', tier_id = t_member  where id = v_member;
   update public.profiles set callsign = 'FAKE-CMD' where id = v_command;
 
@@ -69,7 +86,15 @@ begin
   if public.has_capability('write_events') then raise exception 'FAIL: member has write_events'; end if;
   if public.has_capability('approve_members') then raise exception 'FAIL: member has approve_members'; end if;
 
-  select count(*) into n from public.tiers; if n <> 5 then raise exception 'FAIL: member should read 5 tiers (got %)', n; end if;
+  select count(*) into n from public.tiers; if n <> 7 then raise exception 'FAIL: member should read 7 tiers (got %)', n; end if;
+  if public.has_capability('edit_roster') then raise exception 'FAIL: member has edit_roster'; end if;
+
+  -- The audit log is not readable or writable by members.
+  select count(*) into n from public.profile_audit; if n <> 0 then raise exception 'FAIL: member read the audit log'; end if;
+  begin
+    insert into public.profile_audit (profile_id, event) values (v_member, 'tier');
+    raise exception 'FAIL: member wrote the audit log';
+  exception when others then if sqlerrm like 'FAIL:%' then raise; end if; end;
 
   -- Roster: approved profiles visible, pending ones not.
   select count(*) into n from public.profiles where status = 'pending';
@@ -119,6 +144,21 @@ begin
   select count(*) into n from public.profiles where id = v_pending;
   if n <> 1 then raise exception 'FAIL: command cannot see pending profile'; end if;
   update public.profiles set status = 'approved', tier_id = t_member where id = v_pending;
+  if not public.has_capability('edit_roster') then raise exception 'FAIL: command lacks edit_roster'; end if;
+  -- Command can change an approved member's tier (edit_roster)...
+  update public.profiles set tier_id = t_contractor where id = v_pending;
+  update public.profiles set tier_id = t_member where id = v_pending;
+  -- ...but cannot skip the Old Guard requirement for Command.
+  begin
+    update public.profiles set tier_id = t_command where id = v_pending;
+    raise exception 'FAIL: member promoted straight to Command';
+  exception when others then if sqlerrm like 'FAIL:%' then raise; end if; end;
+  -- Audit log is readable by Command and recorded the actor.
+  select count(*) into n from public.profile_audit
+    where profile_id = v_pending and event = 'status' and old_value = 'pending' and new_value = 'approved' and actor_id = v_command;
+  if n <> 1 then raise exception 'FAIL: approval not audited with actor (got %)', n; end if;
+  select count(*) into n from public.profile_audit where profile_id = v_pending and event = 'tier' and actor_id = v_command;
+  if n < 2 then raise exception 'FAIL: tier changes not audited (got %)', n; end if;
 
   -- Command cannot change own tier/status, cannot touch an admin, cannot grant admin.
   begin
@@ -137,6 +177,21 @@ begin
   begin
     insert into public.tiers (name, rank) values ('Rogue', 99);
     raise exception 'FAIL: command inserted a tier';
+  exception when others then if sqlerrm like 'FAIL:%' then raise; end if; end;
+
+  ------------------------------------------------------------------ Clerk (approve_members only)
+  reset role;
+  perform set_config('request.jwt.claims', json_build_object('sub', v_clerk, 'role', 'authenticated')::text, true);
+  set local role authenticated;
+
+  if not public.has_capability('approve_members') then raise exception 'FAIL: clerk lacks approve_members'; end if;
+  if public.has_capability('edit_roster') then raise exception 'FAIL: clerk has edit_roster'; end if;
+  -- Approving a pending account may assign its tier...
+  update public.profiles set status = 'approved', tier_id = t_member where id = v_pending2;
+  -- ...but changing an approved member's tier needs edit_roster.
+  begin
+    update public.profiles set tier_id = t_contractor where id = v_pending2;
+    raise exception 'FAIL: clerk changed an approved member tier';
   exception when others then if sqlerrm like 'FAIL:%' then raise; end if; end;
 
   ------------------------------------------------------------------ Admin
@@ -162,6 +217,8 @@ begin
 
   ------------------------------------------------------------------ last-admin guard, any caller
   reset role;
+  -- Trusted caller from here on: no JWT, like the SQL editor or service role.
+  perform set_config('request.jwt.claims', '', true);
   begin
     delete from auth.users where id = v_admin;
     raise exception 'FAIL: last admin deleted';
@@ -174,6 +231,18 @@ begin
   -- With a second approved admin, demoting the first is allowed.
   update public.profiles set status = 'approved', is_admin = true where id = v_admin2;
   update public.profiles set is_admin = false where id = v_admin;
+
+  ------------------------------------------------------------------ Command entry and release
+  reset role;
+  begin
+    update public.profiles set tier_id = t_command where id = v_member;
+    raise exception 'FAIL: Member entered Command without Old Guard';
+  exception when others then if sqlerrm like 'FAIL:%' then raise; end if; end;
+  -- Leaving Command returns the member to Old Guard, whatever tier was requested.
+  update public.profiles set tier_id = t_member where id = v_command;
+  select count(*) into n from public.profiles where id = v_command and tier_id = t_oldguard;
+  if n <> 1 then raise exception 'FAIL: leaving Command did not return to Old Guard'; end if;
+  update public.profiles set tier_id = t_command where id = v_command;
 
   ------------------------------------------------------------------ anon gets nothing
   perform set_config('request.jwt.claims', '{"role":"anon"}', true);
@@ -189,14 +258,21 @@ begin
   reset role;
 
   ------------------------------------------------------------------ seed
-  select count(*) into n from public.tiers;
-  if n <> 5 then raise exception 'FAIL: expected 5 seeded tiers (got %)', n; end if;
-  select count(*) into n from public.tier_capabilities where capability_key = 'read_minutes';
-  if n <> 5 then raise exception 'FAIL: every tier should read minutes'; end if;
+  select count(*) into n from public.tiers where name <> 'Clerk';
+  if n <> 6 then raise exception 'FAIL: expected 6 seeded tiers (got %)', n; end if;
+  select count(*) into n from public.tiers where name = 'Contractor' and rank = 4;
+  if n <> 1 then raise exception 'FAIL: Contractor should sit at rank 4'; end if;
+  select count(*) into n from public.tiers where is_default_for_approval and name = 'Recruit';
+  if n <> 1 then raise exception 'FAIL: Recruit should be the default tier'; end if;
+  select count(*) into n from public.tier_capabilities tc join public.tiers t on t.id = tc.tier_id
+    where tc.capability_key = 'read_minutes' and t.name <> 'Clerk';
+  if n <> 6 then raise exception 'FAIL: every seeded tier should read minutes'; end if;
+  select count(*) into n from public.tier_capabilities where capability_key = 'edit_roster';
+  if n <> 1 then raise exception 'FAIL: only Command should hold edit_roster'; end if;
   select count(*) into n from public.tier_capabilities tc join public.tiers t on t.id = tc.tier_id
     where t.name = 'Command' and tc.capability_key in ('approve_members', 'write_minutes', 'write_events');
   if n <> 3 then raise exception 'FAIL: Command seed capabilities wrong'; end if;
-  select count(*) into n from public.tier_capabilities where capability_key in ('approve_members', 'write_minutes', 'write_events');
+  select count(*) into n from public.tier_capabilities where capability_key in ('approve_members', 'write_minutes', 'write_events') and tier_id <> t_clerk;
   if n <> 3 then raise exception 'FAIL: only Command should hold write/approve capabilities'; end if;
 
   raise notice 'db_foundation: ALL PASS';
