@@ -28,6 +28,8 @@ Apply files in filename order to the ODZ Supabase project (SQL editor or `supaba
 * `20261011130000_remove_bootstrap_admin.sql`: signup is invite-only for every address. The initial admin was created by hand in the Supabase dashboard (a dashboard-added user needs an invite code in its metadata too; see that file).
 * `approve_member()` / `reject_member()` (need `approve_members`; approval requires completed setup and keeps the invited tier).
 
+`20261011140000_admin_settings.sql` (MVA-141): invite codes become show-once (`create_invite()` returns the code; only `code_hint`, the last 4 characters, is readable afterwards; direct inserts closed). `list_invites()`, `list_audit()` (profile, invite and settings events, field names only for private data), `my_capabilities()`. Tiers and capabilities change only through admin RPCs (`create_tier`, `rename_tier`, `reorder_tiers`, `delete_tier`, `set_tier_capability`); direct writes revoked. Guards: Command entry/release rules cannot be changed, a tier with members cannot be deleted, `approve_members` cannot be removed from every tier, `view_member_private` changes need the typed word `PRIVATE`, nobody changes their own tier. `tiers.invitable` replaces the name check for which tiers an invite may grant. New `settings_audit` table.
+
 ## Dashboard settings this schema assumes (Auth)
 
 * Email confirmation OFF (no SMTP yet, MVA-200).

@@ -66,13 +66,18 @@ test.describe('members', () => {
     expect(sel.data ?? []).toEqual([])
   })
 
-  test('Command creates an invite and the code is server-generated', async () => {
+  test('Command creates an invite through the RPC and cannot read the code again', async () => {
     const cmd = await seedUser('command', 'cmd')
     const c = await asUser(cmd.email, cmd.password)
-    const own = await c.from('invites').insert({ note: 'e2e-by-command' }).select('code, tier_id').single()
-    expect(own.error).toBeNull()
-    expect(String(own.data?.code).length).toBeGreaterThanOrEqual(10)
+    const made = await c.rpc('create_invite', { p_note: 'e2e-by-command' })
+    expect(made.error).toBeNull()
+    expect(String(made.data).length).toBeGreaterThanOrEqual(10)
+    // Direct inserts are closed, and the code column is unreadable.
     const chosen = await c.from('invites').insert({ code: 'chosen-by-client-0000', note: 'e2e-chosen' })
     expect(chosen.error).not.toBeNull()
+    const peek = await c.from('invites').select('code')
+    expect(peek.error).not.toBeNull()
+    const hints = await c.from('invites').select('code_hint').eq('note', 'e2e-by-command')
+    expect(hints.data?.[0]?.code_hint).toBe(String(made.data).slice(-4))
   })
 })

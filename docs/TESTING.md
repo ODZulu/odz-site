@@ -53,6 +53,8 @@ There is no service-role fallback against the hosted dev project: the service-ro
 * `e2e/invite-flow.spec.ts` (backend): valid invite to signup to setup to pending; unknown, used, expired and revoked codes show the identical error; pending and setup-incomplete accounts are redirected from app routes; approved members reach HQ; a wrong password gives the generic message.
 * `e2e/api.spec.ts` (backend): anon cannot read `invites`, `member_private` and friends; `check_invite` is boolean only; a member reads only their own private row and cannot escalate; only approvers create invites and the code is server-generated.
 
+* `e2e/admin.spec.ts` (backend): a member cannot reach `/admin`; Command sees invites, pending, members and audit but not tiers; Admin sees every section; an invite code is shown in full once and afterwards only its last four characters; approve_members cannot be stripped from its only tier; changing private-details access needs the typed word.
+
 New tickets add their suites to `e2e/` and list them here.
 
 ## Failure artifacts

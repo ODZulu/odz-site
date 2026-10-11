@@ -2,6 +2,12 @@ import { Navigate, Route, Routes } from 'react-router'
 import { Gate } from './auth/Gate'
 import { AppShell, GateLayout } from './components'
 import Calendar from './pages/Calendar'
+import AdminLayout from './pages/admin/AdminLayout'
+import Audit from './pages/admin/Audit'
+import Invites from './pages/admin/Invites'
+import Members from './pages/admin/Members'
+import PendingQueue from './pages/admin/Pending'
+import Tiers from './pages/admin/Tiers'
 import { Denied, Pending } from './pages/Holding'
 import Hq from './pages/Hq'
 import Join from './pages/Join'
@@ -36,6 +42,13 @@ export default function App() {
           <Route path="/hq" element={<Hq />} />
           <Route path="/roster" element={<Roster />} />
           <Route path="/calendar" element={<Calendar />} />
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route path="invites" element={<Invites />} />
+            <Route path="pending" element={<PendingQueue />} />
+            <Route path="members" element={<Members />} />
+            <Route path="tiers" element={<Tiers />} />
+            <Route path="audit" element={<Audit />} />
+          </Route>
           <Route path="/members" element={<Navigate to="/roster" replace />} />
           <Route path="*" element={<h1 className="odz-title">Not found</h1>} />
         </Route>

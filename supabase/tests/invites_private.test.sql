@@ -72,9 +72,9 @@ begin
   if not public.has_capability('view_member_private') then raise exception 'FAIL: command lacks view_member_private'; end if;
 
   -- Server-generated code, default Recruit, 7 day expiry, issuer recorded.
-  insert into public.invites (note) values ('fake note') returning code into inv_code;
+  inv_code := public.create_invite(null, 'fake note');
   select count(*) into n from public.invites
-    where code = inv_code and length(code) >= 10 and tier_id = t_recruit and created_by = v_cmd
+    where code_hint = right(inv_code, 4) and note = 'fake note' and length(inv_code) >= 10 and tier_id = t_recruit and created_by = v_cmd
       and expires_at > now() + interval '6 days' and expires_at < now() + interval '8 days';
   if n <> 1 then raise exception 'FAIL: invite defaults wrong'; end if;
 
@@ -89,19 +89,18 @@ begin
   exception when others then if sqlerrm like 'FAIL:%' then raise; end if; end;
 
   -- Only Recruit, Prospect and Contractor can be granted.
-  insert into public.invites (tier_id, note) values (t_contractor, 'fake contractor');
+  perform public.create_invite(t_contractor, 'fake contractor');
   begin
-    insert into public.invites (tier_id) values (t_cmd);
+    perform public.create_invite(t_cmd);
     raise exception 'FAIL: invite for Command allowed';
   exception when others then if sqlerrm like 'FAIL:%' then raise; end if; end;
   begin
-    insert into public.invites (tier_id) values (t_mem);
+    perform public.create_invite(t_mem);
     raise exception 'FAIL: invite for Member allowed';
   exception when others then if sqlerrm like 'FAIL:%' then raise; end if; end;
 
   -- Revoke an unused invite; the audit log records it; it cannot be revoked twice.
-  update public.invites set revoked_at = now() where code = 'fakeinvite0000000099';  -- no row, fine
-  insert into public.invites (note) values ('to revoke');
+  perform public.create_invite(null, 'to revoke');
   update public.invites set revoked_at = now() where note = 'to revoke';
   select count(*) into n from public.invite_audit where event = 'revoked' and actor_id = v_cmd;
   if n <> 1 then raise exception 'FAIL: revoke not audited (got %)', n; end if;
@@ -119,6 +118,10 @@ begin
   set local role authenticated;
   select count(*) into n from public.invites; if n <> 0 then raise exception 'FAIL: member read invites'; end if;
   select count(*) into n from public.invite_audit; if n <> 0 then raise exception 'FAIL: member read invite audit'; end if;
+  begin
+    perform public.create_invite();
+    raise exception 'FAIL: member created an invite via the RPC';
+  exception when others then if sqlerrm like 'FAIL:%' then raise; end if; end;
   begin
     insert into public.invites (tier_id) values (t_recruit);
     raise exception 'FAIL: member created an invite';

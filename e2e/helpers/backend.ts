@@ -68,7 +68,7 @@ export async function createInvite(opts2: { tier?: string; expiresAt?: string; r
   return data.code as string
 }
 
-export type SeedLevel = 'pending' | 'pending-setup-done' | 'recruit' | 'member' | 'command'
+export type SeedLevel = 'pending' | 'pending-setup-done' | 'recruit' | 'member' | 'command' | 'admin'
 
 export type SeededUser = { id: string; email: string; password: string; callsign: string }
 
@@ -78,6 +78,7 @@ export type SeededUser = { id: string; email: string; password: string; callsign
  */
 export async function seedUser(level: SeedLevel, tag: string = level): Promise<SeededUser> {
   const a = admin()
+  if (level === 'admin') await ensureKeepAdmin()
   const email = fakeEmail(tag)
   const callsign = fakeCallsign()
   const code = await createInvite()
@@ -93,7 +94,7 @@ export async function seedUser(level: SeedLevel, tag: string = level): Promise<S
   if (level !== 'pending') {
     await setupDone(id, callsign)
   }
-  if (level === 'recruit' || level === 'member' || level === 'command') {
+  if (level === 'recruit' || level === 'member' || level === 'command' || level === 'admin') {
     await a.from('profiles').update({ status: 'approved' }).eq('id', id)
   }
   if (level === 'member') await a.from('profiles').update({ tier_id: await tierId('Member') }).eq('id', id)
@@ -101,7 +102,27 @@ export async function seedUser(level: SeedLevel, tag: string = level): Promise<S
     await a.from('profiles').update({ tier_id: await tierId('Old Guard') }).eq('id', id)
     await a.from('profiles').update({ tier_id: await tierId('Command') }).eq('id', id)
   }
+  if (level === 'admin') await a.from('profiles').update({ is_admin: true }).eq('id', id)
   return { id, email, password: PASSWORD, callsign }
+}
+
+/**
+ * The last-admin rule applies to everyone, so an e2e admin can only be deleted while another admin
+ * exists. One permanent admin (no e2e- prefix, never used to sign in) lives on the throwaway local stack.
+ */
+async function ensureKeepAdmin(): Promise<void> {
+  const a = admin()
+  const email = 'keep-admin@example.invalid'
+  const existing = await a.from('profiles').select('id').eq('is_admin', true).limit(50)
+  const ids = (existing.data ?? []).map((r: { id: string }) => r.id)
+  if (ids.length) {
+    const users = await a.auth.admin.listUsers({ page: 1, perPage: 200 })
+    if (users.data.users.some((u) => u.email === email && ids.includes(u.id))) return
+  }
+  const code = await createInvite()
+  const { data, error } = await a.auth.admin.createUser({ email, password: PASSWORD, email_confirm: true, user_metadata: { invite_code: code } })
+  if (error || !data.user) throw new Error('could not create the keep-alive admin')
+  await a.from('profiles').update({ status: 'approved', is_admin: true, setup_complete: true, callsign: 'KEEP-ADMIN' }).eq('id', data.user.id)
 }
 
 async function setupDone(id: string, callsign: string): Promise<void> {

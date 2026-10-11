@@ -206,10 +206,9 @@ begin
   set local role authenticated;
 
   if not public.has_capability('write_minutes') then raise exception 'FAIL: admin lacks write_minutes'; end if;
-  insert into public.capabilities (key, description) values ('test_cap', 'fake');
-  insert into public.tier_capabilities (tier_id, capability_key) values (t_member, 'test_cap');
-  delete from public.tier_capabilities where capability_key = 'test_cap';
-  delete from public.capabilities where key = 'test_cap';
+  -- Capabilities change only through the admin RPC (direct writes are closed).
+  perform public.set_tier_capability(t_member, 'write_events', true);
+  perform public.set_tier_capability(t_member, 'write_events', false);
 
   -- Sole admin cannot demote or suspend themselves.
   begin

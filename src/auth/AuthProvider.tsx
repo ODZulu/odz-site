@@ -18,6 +18,10 @@ type AuthValue = {
   profile: Profile | null
   /** Approved accounts only (pending accounts cannot read the tiers table). */
   tierName: string | null
+  /** Capability keys the account holds (admins hold all). The UI hides; RLS is the control. */
+  capabilities: string[]
+  can: (capability: string) => boolean
+  isAdmin: boolean
   access: AccessState
   /** Returns a message to show, or null on success. Never says which of email or password was wrong. */
   signIn: (email: string, password: string) => Promise<string | null>
@@ -31,6 +35,9 @@ const idle: AuthValue = {
   session: null,
   profile: null,
   tierName: null,
+  capabilities: [],
+  can: () => false,
+  isAdmin: false,
   access: { loading: false, signedIn: false, profile: null },
   signIn: async () => 'Sign-in is not available.',
   signOut: async () => {},
@@ -41,10 +48,12 @@ const AuthContext = createContext<AuthValue>(idle)
 
 export const useAuth = () => useContext(AuthContext)
 
+type Loaded = { uid: string; profile: Profile | null; tierName: string | null; capabilities: string[] }
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [sessionReady, setSessionReady] = useState(!supabase)
-  const [loaded, setLoaded] = useState<{ uid: string; profile: Profile | null; tierName: string | null } | null>(null)
+  const [loaded, setLoaded] = useState<Loaded | null>(null)
 
   useEffect(() => {
     if (!supabase) return
@@ -72,11 +81,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .maybeSingle()
     const profile = (data as Profile | null) ?? null
     let tierName: string | null = null
-    if (profile?.status === 'approved' && profile.tier_id) {
-      const tier = await supabase.from('tiers').select('name').eq('id', profile.tier_id).maybeSingle()
-      tierName = (tier.data as { name: string } | null)?.name ?? null
+    let capabilities: string[] = []
+    if (profile?.status === 'approved') {
+      if (profile.tier_id) {
+        const tier = await supabase.from('tiers').select('name').eq('id', profile.tier_id).maybeSingle()
+        tierName = (tier.data as { name: string } | null)?.name ?? null
+      }
+      const caps = await supabase.rpc('my_capabilities')
+      capabilities = Array.isArray(caps.data) ? (caps.data as string[]) : []
     }
-    setLoaded({ uid, profile, tierName })
+    setLoaded({ uid, profile, tierName, capabilities })
   }, [uid])
 
   useEffect(() => {
@@ -86,6 +100,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const current = uid !== null && loaded?.uid === uid ? loaded : null
   const loading = !sessionReady || (uid !== null && current === null)
   const profile = current?.profile ?? null
+  const capabilities = useMemo(() => current?.capabilities ?? [], [current])
+  const isAdmin = profile?.is_admin === true && profile.status === 'approved'
 
   const signIn = useCallback(async (email: string, password: string) => {
     if (!supabase) return 'Sign-in is not available.'
@@ -109,12 +125,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       session,
       profile,
       tierName: current?.tierName ?? null,
+      capabilities,
+      can: (capability: string) => isAdmin || capabilities.includes(capability),
+      isAdmin,
       access: { loading, signedIn: session !== null, profile },
       signIn,
       signOut,
       refreshProfile: loadProfile,
     }),
-    [loading, session, profile, current, signIn, signOut, loadProfile],
+    [loading, session, profile, current, capabilities, isAdmin, signIn, signOut, loadProfile],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
