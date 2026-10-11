@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test'
 // UI-only checks: no backend needed. The dev server runs with no Supabase config unless the
 // E2E_* variables are set, and an anonymous visitor behaves the same either way.
 
-const gated = ['/hq', '/roster', '/calendar', '/members', '/admin', '/documents', '/minutes', '/me', '/setup', '/pending']
+const gated = ['/hq', '/roster', '/members', '/admin', '/documents', '/minutes', '/me', '/setup', '/pending']
 
 test.describe('anonymous visitor', () => {
   for (const path of gated) {
@@ -31,6 +31,14 @@ test.describe('anonymous visitor', () => {
     const text = (await page.locator('body').innerText()).toLowerCase()
     expect(text).not.toContain('forgot')
     expect(text).toContain('locked out? contact command')
+  })
+
+  test('the calendar is public and offers a way to sign in', async ({ page }) => {
+    await page.goto('/calendar')
+    await expect(page).toHaveURL(/\/calendar$/)
+    await expect(page.getByRole('heading', { name: 'Calendar' })).toBeVisible()
+    await expect(page.getByText('All times Phoenix')).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Sign in' })).toBeVisible()
   })
 
   test('the landing page offers sign in only', async ({ page }) => {

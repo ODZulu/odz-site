@@ -33,6 +33,9 @@ export default function Landing() {
             <ButtonLink to="/login" block>
               Sign in
             </ButtonLink>
+            <ButtonLink to="/calendar" variant="sec" block>
+              Calendar
+            </ButtonLink>
           </div>
         </div>
       </div>

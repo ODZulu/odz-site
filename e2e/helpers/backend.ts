@@ -142,6 +142,27 @@ async function setupDone(id: string, callsign: string): Promise<void> {
   if (prof.error) throw new Error('could not seed profile')
 }
 
+/** Creates an event directly (service role). Titles start with `E2E ` so cleanup finds them. */
+export async function createEventRow(opts2: { title?: string; location?: string; detail?: string; description?: string; inDays?: number; status?: string } = {}) {
+  const start = new Date(Date.now() + (opts2.inDays ?? 3) * 86_400_000)
+  const { data, error } = await admin()
+    .from('events')
+    .insert({
+      title: opts2.title ?? `E2E Event ${uniq()}`,
+      event_type: 'Training',
+      starts_at: start.toISOString(),
+      ends_at: new Date(start.getTime() + 3_600_000).toISOString(),
+      location_name: opts2.location ?? null,
+      location_detail: opts2.detail ?? null,
+      description: opts2.description ?? null,
+      status: opts2.status ?? 'scheduled',
+    })
+    .select('id,title')
+    .single()
+  if (error || !data) throw new Error('could not create event')
+  return data as { id: string; title: string }
+}
+
 /** Clears failed-guess counters so a lockout in one test cannot affect the next. */
 export async function resetInviteAttempts(): Promise<void> {
   await admin().from('invite_attempts').delete().neq('key', '')
@@ -167,5 +188,6 @@ export async function cleanup(): Promise<void> {
     await a.from('invite_audit').delete().in('invite_id', invIds)
     await a.from('invites').delete().in('id', invIds)
   }
+  await a.from('events').delete().like('title', 'E2E %')
   await resetInviteAttempts()
 }

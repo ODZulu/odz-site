@@ -30,6 +30,8 @@ Apply files in filename order to the ODZ Supabase project (SQL editor or `supaba
 
 `20261011140000_admin_settings.sql` (MVA-141): invite codes become show-once (`create_invite()` returns the code; only `code_hint`, the last 4 characters, is readable afterwards; direct inserts closed). `list_invites()`, `list_audit()` (profile, invite and settings events, field names only for private data), `my_capabilities()`. Tiers and capabilities change only through admin RPCs (`create_tier`, `rename_tier`, `reorder_tiers`, `delete_tier`, `set_tier_capability`); direct writes revoked. Guards: Command entry/release rules cannot be changed, a tier with members cannot be deleted, `approve_members` cannot be removed from every tier, `view_member_private` changes need the typed word `PRIVATE`, nobody changes their own tier. `tiers.invitable` replaces the name check for which tiers an invite may grant. New `settings_audit` table.
 
+`20261011150000_events.sql` (MVA-201): `events` (RLS: read needs `read_event_details`, write needs `write_events`; no client can set `created_by` or `external_id`), the `public_events` view (title, type, times, status only; the only thing anon can read), audit rows in `settings_audit` (titles only). `read_event_details` is removed from Recruit, Prospect and Contractor (Member and above keep it; Admin can toggle it).
+
 ## Dashboard settings this schema assumes (Auth)
 
 * Email confirmation OFF (no SMTP yet, MVA-200).

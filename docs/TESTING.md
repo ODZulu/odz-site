@@ -55,6 +55,8 @@ There is no service-role fallback against the hosted dev project: the service-ro
 
 * `e2e/admin.spec.ts` (backend): a member cannot reach `/admin`; Command sees invites, pending, members and audit but not tiers; Admin sees every section; an invite code is shown in full once and afterwards only its last four characters; approve_members cannot be stripped from its only tier; changing private-details access needs the typed word.
 
+* `e2e/calendar.spec.ts` (backend): anonymous visitors get titles and times and no location, directions or description in any network response (and never touch the `events` table); a Recruit sees the listing but not the details; a Member sees location, directions and description; a script in a description renders inert; Command creates (with validation), edits and cancels an event.
+
 New tickets add their suites to `e2e/` and list them here.
 
 ## Failure artifacts

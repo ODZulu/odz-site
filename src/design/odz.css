@@ -174,3 +174,30 @@
 .odz-subnav a[aria-current] { color: var(--ink); border-color: var(--primary); box-shadow: inset 0 -3px 0 var(--primary); }
 .odz-code { font-family: var(--f-data); word-break: break-all; font-size: 1.125rem; color: var(--primary); }
 .odz-capgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: .25rem 1rem; }
+
+/* long-form text from markdown (events, minutes, documents) */
+.odz-md { line-height: 1.55; max-width: 46rem; }
+.odz-md > * + * { margin-top: .75rem; }
+.odz-md h2, .odz-md h3, .odz-md h4, .odz-md h5, .odz-md h6 { font-family: var(--f-head); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; line-height: 1.2; margin-top: 1.25rem; scroll-margin-top: 4rem; }
+.odz-md h2 { font-size: 1.5rem; color: var(--primary); }
+.odz-md h3 { font-size: 1.25rem; }
+.odz-md h4, .odz-md h5, .odz-md h6 { font-size: 1rem; color: var(--ink-muted); }
+.odz-md ul, .odz-md ol { padding-left: 1.5rem; }
+.odz-md li + li { margin-top: .25rem; }
+.odz-md a { color: var(--primary); }
+.odz-md code { font-family: var(--f-data); font-size: .9em; background: var(--deep); padding: 0 .25rem; }
+.odz-md pre { background: var(--deep); border: 1px solid var(--line); padding: .75rem; overflow-x: auto; }
+.odz-md pre code { background: none; padding: 0; }
+.odz-md blockquote { border-left: 3px solid var(--line-strong); padding-left: .75rem; color: var(--ink-muted); }
+.odz-md hr { border: 0; border-top: 1px solid var(--line); }
+.odz-input.odz-textarea { display: block; min-height: 6rem; padding: .5rem .75rem; line-height: 1.4; font: inherit; resize: vertical; }
+
+/* agenda */
+.odz-agenda > * + * { margin-top: 1.25rem; }
+.odz-day { font-family: var(--f-label); font-weight: var(--label-w); letter-spacing: var(--label-ls); text-transform: uppercase; color: var(--ink-muted); font-size: .8125rem; margin-bottom: .5rem; }
+.odz-event { background: var(--surface); border: 1px solid var(--line); padding: .75rem 1rem; }
+.odz-event + .odz-event { margin-top: .5rem; }
+.odz-event[data-cancelled] .odz-event__title { text-decoration: line-through; color: var(--ink-muted); }
+.odz-event__time { font-family: var(--f-data); color: var(--primary); }
+.odz-event__title { font-family: var(--f-head); font-weight: 700; font-size: 1.25rem; letter-spacing: .03em; }
+.odz-event summary { cursor: pointer; min-height: var(--touch); display: flex; align-items: center; color: var(--primary); }
