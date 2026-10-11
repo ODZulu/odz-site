@@ -55,18 +55,20 @@ test('a Member sees location, directions and description', async ({ page }) => {
   await page.goto('/calendar')
   await expect(page.getByText(ev.title)).toBeVisible()
   await expect(page.getByText(SECRET_LOCATION)).toBeVisible()
-  await page.getByText('Details', { exact: true }).first().click()
+  // Scope to this test's own event: earlier tests leave events on the shared stack, in no fixed order.
+  await page.locator('article', { hasText: ev.title }).getByText('Details', { exact: true }).click()
   await expect(page.getByText(SECRET_DETAIL)).toBeVisible()
   await expect(page.getByText(SECRET_DESCRIPTION)).toBeVisible()
   await expect(page.getByRole('button', { name: 'New event' })).toHaveCount(0)
 })
 
 test('a script in an event description renders inert', async ({ page }) => {
-  await createEventRow({ detail: 'x', description: '<script>window.__pwned = 1</script>hello' })
+  const ev = await createEventRow({ detail: 'x', description: '<script>window.__pwned = 1</script>hello' })
   await signIn(page, await seedUser('member', 'cal-xss'))
   await page.goto('/calendar')
-  await page.getByText('Details', { exact: true }).first().click()
-  await expect(page.locator('.odz-md')).toContainText('<script>')
+  const card = page.locator('article', { hasText: ev.title })
+  await card.getByText('Details', { exact: true }).click()
+  await expect(card.locator('.odz-md')).toContainText('<script>')
   expect(await page.evaluate(() => (window as unknown as { __pwned?: number }).__pwned)).toBeUndefined()
 })
 
