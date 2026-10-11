@@ -36,15 +36,16 @@ npm run db:push        # apply, in order
 
 **All migrations are applied only with `db push` from this repo**, never through the dashboard SQL editor or an MCP/connector. Those record their own timestamps, so local and remote history diverge (this happened once on dev and was fixed with `supabase migration repair`). Prod starts clean this way. Dax runs the prod push in his own terminal after reviewing the dry run.
 
-`supabase/migrations/` is the whole schema: tiers, capabilities, profiles, invites, private data, events, minutes, documents, HQ tables, notifications and the private `minutes` storage bucket. Tiers and capabilities are seeded by the migrations; **no test or sample data goes to prod**.
+`supabase/migrations/` is the whole schema: tiers, capabilities, profiles, invites, private data, events, minutes, documents, HQ tables, notifications and the private `minutes` storage bucket. Later migrations are pushed one at a time, in order, after the initial push (the `public_events` fix and MVA-207's phone/NKA are separate pushes). Tiers and capabilities are seeded by the migrations; **no test or sample data goes to prod**.
 
 Run the SQL tests against a prod-shaped clone (a branch or the dev project), never prod: `supabase/tests/*.test.sql` (see docs/TESTING.md).
 
 ## 3. Auth settings (Dax, dashboard > Authentication)
 
-* **Confirm email: OFF** (no SMTP yet, MVA-200). The Email provider itself stays **on**.
-* **Minimum password length: 12.** In the dashboard this is under Sign In / Providers > Email (the label and location move between dashboard versions). The app checks 12 characters in the form, but the dashboard setting is the server-side control.
-* Rate limits left on.
+* [x] **Confirm email: OFF** (no SMTP yet, MVA-200). The Email provider itself stays **on**.
+* [x] **Minimum password length: 12.** In the dashboard this is under Sign In / Providers > Email (the label and location move between dashboard versions). The app checks 12 characters in the form, but the dashboard setting is the server-side control.
+* [x] Rate limits left on.
+* [x] Auth site URL and redirect `https://odzulu.com/**` set on ODZ-Prod (Dax, 2026-10-11).
 * **Signup is invite-only, enforced in the database.** The signup trigger consumes an invite code and rejects everything else, so the public Auth endpoint cannot create an account without one. Verify after setup:
 
   ```
@@ -53,7 +54,7 @@ Run the SQL tests against a prod-shaped clone (a branch or the dev project), nev
     -d '{"email":"nobody@example.invalid","password":"a-long-test-password-1"}'
   ```
 
-  This must fail ("Database error saving new user"). If it returns a user, stop and fix before release.
+  This must be refused: expect HTTP 500 with `{"code":"P0001","message":"Invite not valid"}` (older wording: "Database error saving new user"), and no user created. If it returns a user, stop and fix before release.
 
 ## 4. First admin
 
@@ -67,13 +68,16 @@ Also usable: `supabase/seed/link_profile.sql` repairs a user that has an auth ro
 
 ## 5. Web Push (MVA-203)
 
-```
-npx web-push generate-vapid-keys
-supabase secrets set VAPID_PUBLIC_KEY=<public> VAPID_PRIVATE_KEY=<private> VAPID_SUBJECT=mailto:<a contact address>
-supabase functions deploy send-push
-```
+Push stays **off** until this is done; the app shows "Push is not set up for this build yet" and in-app notifications keep working. Dev and prod each get their **own** key pair.
 
-Set the **public** key as `VITE_VAPID_PUBLIC_KEY` in Vercel (Production scope for the prod key pair; Preview/Development keep the dev pair), then redeploy. Dax sets the private key as an Edge Function secret on that project (Dashboard > Edge Functions > Secrets, or `supabase secrets set` as above). The private key lives only in the function's secrets. Then run `supabase/seed/schedule_push.sql` once per environment (it needs the project URL and service-role key in Vault; instructions at the top of that file). `generate_reminders()` is scheduled by the migration itself every 5 minutes, when pg_cron is available. If the project pauses (free tier), reminders stop (MVA-140).
+1. **Dax**, in a normal terminal outside Claude Code, in the repo: `npm run vapid:generate`. It prints a public and a private key to the terminal and writes nothing. Run it once for prod and once for dev. The private key never goes in chat, Linear, the repo or `.env.local`.
+2. Public key to **Vercel** as `VITE_VAPID_PUBLIC_KEY`: **Production** scope for the prod pair, **Preview** and **Development** for the dev pair. Redeploy (Vite bakes it in at build time).
+3. In the **matching Supabase project**, Dashboard > Edge Functions > Secrets, add these three (names exactly as `send-push` reads them):
+   * `VAPID_PUBLIC_KEY`: the same public key
+   * `VAPID_PRIVATE_KEY`: the private key
+   * `VAPID_SUBJECT`: `mailto:<the detachment mailbox>`
+4. Deploy the function: `npx supabase functions deploy send-push --project-ref <ref>`.
+5. Run `supabase/seed/schedule_push.sql` once per environment (it needs the project URL and service-role key in Vault; instructions at the top of that file). `generate_reminders()` is scheduled by the migration itself every 5 minutes, when pg_cron is available. If the project pauses (free tier), reminders stop (MVA-140).
 
 ## 6. Advisors and audit
 
