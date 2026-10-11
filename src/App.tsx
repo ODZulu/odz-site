@@ -15,7 +15,9 @@ import Hq from './pages/Hq'
 import Join from './pages/Join'
 import Landing from './pages/Landing'
 import Login from './pages/Login'
+import Me from './pages/Me'
 import Roster from './pages/Roster'
+import RosterDetail from './pages/RosterDetail'
 import Setup from './pages/Setup'
 
 /** The calendar is public: signed-in members get the full shell, everyone else the public frame. */
@@ -59,6 +61,8 @@ export default function App() {
         <Route element={<AppShell />}>
           <Route path="/hq" element={<Hq />} />
           <Route path="/roster" element={<Roster />} />
+          <Route path="/roster/:callsign" element={<RosterDetail />} />
+          <Route path="/me" element={<Me />} />
           <Route path="/admin" element={<AdminLayout />}>
             <Route path="invites" element={<Invites />} />
             <Route path="pending" element={<PendingQueue />} />

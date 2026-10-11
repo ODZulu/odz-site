@@ -57,6 +57,8 @@ There is no service-role fallback against the hosted dev project: the service-ro
 
 * `e2e/calendar.spec.ts` (backend): anonymous visitors get titles and times and no location, directions or description in any network response (and never touch the `events` table); a Recruit sees the listing but not the details; a Member sees location, directions and description; a script in a description renders inert; Command creates (with validation), edits and cancels an event.
 
+* `e2e/directory.spec.ts` (backend): the roster lists approved members, is searchable and hides pending accounts; a member edits their own profile and a script in the bio stays inert; private details show only to the owner and Command; a member cannot rename themselves or change their tier through the API.
+
 New tickets add their suites to `e2e/` and list them here.
 
 ## Failure artifacts

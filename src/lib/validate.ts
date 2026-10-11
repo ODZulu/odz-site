@@ -61,8 +61,7 @@ export function validateRequired(value: string, label: string, max: number): str
   return v.length > max ? `${label} is too long.` : null
 }
 
-export type SetupValues = {
-  callsign: string
+export type PrivateValues = {
   legalName: string
   dob: string
   phone: string
@@ -72,14 +71,17 @@ export type SetupValues = {
   emergencyPhone: string
 }
 
+export type SetupValues = PrivateValues & { callsign: string }
+
+export type PrivateErrors = Partial<Record<keyof PrivateValues, string>>
 export type SetupErrors = Partial<Record<keyof SetupValues, string>>
 
-export function validateSetup(v: SetupValues, today: Date = new Date()): SetupErrors {
-  const errors: SetupErrors = {}
-  const set = (k: keyof SetupValues, msg: string | null) => {
+/** The private details (legal name, date of birth, phone, allergies, emergency contact). */
+export function validatePrivate(v: PrivateValues, today: Date = new Date()): PrivateErrors {
+  const errors: PrivateErrors = {}
+  const set = (k: keyof PrivateValues, msg: string | null) => {
     if (msg) errors[k] = msg
   }
-  set('callsign', validateCallsign(v.callsign))
   set('legalName', validateRequired(v.legalName, 'Full legal name', 100))
   set('dob', validateDob(v.dob, today))
   set('phone', validatePhone(v.phone, false))
@@ -87,6 +89,13 @@ export function validateSetup(v: SetupValues, today: Date = new Date()): SetupEr
   set('emergencyName', validateRequired(v.emergencyName, 'Emergency contact name', 100))
   set('emergencyRelationship', validateRequired(v.emergencyRelationship, 'Relationship', 50))
   set('emergencyPhone', validatePhone(v.emergencyPhone, true))
+  return errors
+}
+
+export function validateSetup(v: SetupValues, today: Date = new Date()): SetupErrors {
+  const errors: SetupErrors = validatePrivate(v, today)
+  const callsign = validateCallsign(v.callsign)
+  if (callsign) errors.callsign = callsign
   return errors
 }
 

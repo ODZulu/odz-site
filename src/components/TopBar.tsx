@@ -17,7 +17,11 @@ export function TopBar({ now = new Date() }: { now?: Date }) {
       </Link>
       <span className="odz-label odz-desktop-only">{formatStamp(now)}</span>
       <span className="odz-row">
-        {profile?.callsign && <span className="odz-label">{profile.callsign}</span>}
+        {profile?.callsign && (
+          <Link to="/me" className="odz-label" aria-label="My profile">
+            {profile.callsign}
+          </Link>
+        )}
         {tierName && (
           <span className="odz-desktop-only">
             <TierMark tier={tierName} />

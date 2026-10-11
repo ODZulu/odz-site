@@ -71,15 +71,15 @@ begin
   if n <> 1 then raise exception 'FAIL: pending should see only own profile (saw %)', n; end if;
   if public.has_capability('read_minutes') then raise exception 'FAIL: pending has read_minutes'; end if;
 
+  -- A pending user cannot approve themselves (no policy lets them update their own row, and the
+  -- column grants no longer include callsign or display_name at all).
+  update public.profiles set status = 'approved' where id = v_pending;
+  select count(*) into n from public.profiles where id = v_pending and status = 'pending';
+  if n <> 1 then raise exception 'FAIL: pending self-approved'; end if;
   begin
-    update public.profiles set status = 'approved' where id = v_pending;
-    raise exception 'FAIL: pending self-approved';
-  exception when others then
-    if sqlerrm like 'FAIL:%' then raise; end if;
-  end;
-
-  -- A pending user may set their own callsign.
-  update public.profiles set callsign = 'fake-pending', display_name = 'Fake Pending' where id = v_pending;
+    update public.profiles set callsign = 'fake-pending' where id = v_pending;
+    raise exception 'FAIL: direct callsign update allowed';
+  exception when others then if sqlerrm like 'FAIL:%' then raise; end if; end;
 
   ------------------------------------------------------------------ approved Member
   reset role;
@@ -108,24 +108,22 @@ begin
   select count(*) into n from public.profiles where id = v_command;
   if n <> 1 then raise exception 'FAIL: member cannot see approved roster'; end if;
 
-  -- Cannot self-promote by tier, admin flag, or status.
-  begin
-    update public.profiles set tier_id = t_command where id = v_member;
-    raise exception 'FAIL: member self-promoted tier';
-  exception when others then if sqlerrm like 'FAIL:%' then raise; end if; end;
-  begin
-    update public.profiles set is_admin = true where id = v_member;
-    raise exception 'FAIL: member self-granted admin';
-  exception when others then if sqlerrm like 'FAIL:%' then raise; end if; end;
-  begin
-    update public.profiles set status = 'suspended' where id = v_member;
-    raise exception 'FAIL: member changed own status';
-  exception when others then if sqlerrm like 'FAIL:%' then raise; end if; end;
+  -- Cannot self-promote by tier, admin flag, or status: members have no update policy on their own
+  -- row any more, so these change nothing.
+  update public.profiles set tier_id = t_command where id = v_member;
+  update public.profiles set is_admin = true where id = v_member;
+  update public.profiles set status = 'suspended' where id = v_member;
+  select count(*) into n from public.profiles where id = v_member and tier_id = t_member and not is_admin and status = 'approved';
+  if n <> 1 then raise exception 'FAIL: member changed their own tier, admin flag or status'; end if;
 
-  -- Cannot edit someone else's profile (RLS filters the row, so zero rows change).
-  update public.profiles set display_name = 'tampered' where id = v_command;
+  -- Cannot edit someone else's profile (display_name is not even a writable column any more).
+  begin
+    update public.profiles set display_name = 'tampered' where id = v_command;
+    raise exception 'FAIL: member edited another profile';
+  exception when others then if sqlerrm like 'FAIL:%' then raise; end if; end;
+  update public.profiles set tier_id = t_member where id = v_command;
   get diagnostics n = row_count;
-  if n <> 0 then raise exception 'FAIL: member edited another profile'; end if;
+  if n <> 0 then raise exception 'FAIL: member edited another profile row'; end if;
 
   -- Cannot write the config tables.
   begin

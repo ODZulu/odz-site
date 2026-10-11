@@ -32,6 +32,8 @@ Apply files in filename order to the ODZ Supabase project (SQL editor or `supaba
 
 `20261011150000_events.sql` (MVA-201): `events` (RLS: read needs `read_event_details`, write needs `write_events`; no client can set `created_by` or `external_id`), the `public_events` view (title, type, times, status only; the only thing anon can read), audit rows in `settings_audit` (titles only). `read_event_details` is removed from Recruit, Prospect and Contractor (Member and above keep it; Admin can toggle it).
 
+`20261011160000_profiles_directory.sql` (MVA-204): `profiles.role_note` (<=60), `bio` (<=280), `joined_at` (first approval; backfilled). Members edit only display name, role note and bio through `update_own_profile()`; direct updates of profiles are closed except tier, status and is_admin for roster managers (the own-row update policy is gone). `set_callsign()` (edit_roster) and `update_own_private()` added; profile edits are audited by field name only.
+
 ## Dashboard settings this schema assumes (Auth)
 
 * Email confirmation OFF (no SMTP yet, MVA-200).
