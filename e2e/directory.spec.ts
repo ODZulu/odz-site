@@ -58,6 +58,8 @@ test('private details show only to the owner and Command', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Private details' })).toHaveCount(0)
   await expect(page.locator('body')).not.toContainText('E2E Fake Person')
   await page.getByRole('button', { name: 'Sign out' }).click()
+  // Navigating away mid-request would leave the session in place, so wait for sign-out to finish.
+  await expect(page.getByRole('button', { name: 'Sign out' })).toHaveCount(0)
 
   await signIn(page, cmd)
   await page.goto(`/roster/${encodeURIComponent(target.callsign)}`)
