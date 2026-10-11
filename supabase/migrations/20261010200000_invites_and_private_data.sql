@@ -236,6 +236,12 @@ end;
 $$;
 
 -- Signup: no valid invite, no account.
+--
+-- Exception: the detachment mailbox below becomes the initial admin ("ODZ Admin"), already
+-- approved with setup marked complete, so there is always a blank-ish first entry. Dax's call,
+-- 2026-10-11. It only applies while no admin exists: once any admin is on the books, this
+-- address needs an invite like everyone else. Until the first admin exists anyone could register
+-- that address (email confirmation is off), so sign up with it right after applying this.
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql security definer set search_path = ''
@@ -243,6 +249,13 @@ as $$
 declare
   v_tier uuid;
 begin
+  if lower(btrim(coalesce(new.email, ''))) = 'detachmentzulu@gmail.com'
+     and not exists (select 1 from public.profiles p where p.is_admin) then
+    insert into public.profiles (id, callsign, display_name, status, is_admin, setup_complete)
+    values (new.id, 'ODZ Admin', 'ODZ Admin', 'approved', true, true);
+    return new;
+  end if;
+
   v_tier := public.redeem_invite(new.raw_user_meta_data ->> 'invite_code', new.id);
   insert into public.profiles (id, tier_id) values (new.id, v_tier);
   return new;

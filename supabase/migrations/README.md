@@ -25,6 +25,7 @@ Apply files in filename order to the ODZ Supabase project (SQL editor or `supaba
 * Signup is gated in the database: `handle_new_user()` consumes the code from the signup metadata (`invite_code`) via `redeem_invite()`, so a direct Auth API call without a valid code fails. Side effect: users cannot be created from the dashboard without an invite either (make one with `supabase/seed/first_invite.sql`).
 * `check_invite(code)` is the only anon-callable function. It returns true/false, never says why, and locks a source out for 15 minutes after 5 bad guesses (50 overall). It identifies the source from `cf-connecting-ip`, then `x-real-ip`, then the first `x-forwarded-for` entry; verify on the live project that one of these is set by Supabase's proxy.
 * `member_private` (legal name, date of birth, phone, allergies, emergency contact): owner reads/writes own row; `view_member_private` (Command) reads all; only admins delete. Writes are logged in `profile_audit` (event `private`) by field name only. `complete_setup()` validates and writes it atomically and sets `profiles.setup_complete`; its errors are fixed codes that never echo values.
+* Initial admin: the first signup with the detachment mailbox (hard-coded in `handle_new_user()`, Dax 2026-10-11) becomes `ODZ Admin`, approved, admin, setup complete, no invite needed. Only while no admin exists. Until then anyone could register that address (email confirmation is off), so sign up with it right after applying.
 * `approve_member()` / `reject_member()` (need `approve_members`; approval requires completed setup and keeps the invited tier).
 
 ## Dashboard settings this schema assumes (Auth)
@@ -32,7 +33,9 @@ Apply files in filename order to the ODZ Supabase project (SQL editor or `supaba
 * Email confirmation OFF (no SMTP yet, MVA-200).
 * Minimum password length 12 (the client enforces it too, but the dashboard setting is the server-side control).
 
-## Bootstrap the first admin (manual, once)
+## Other admins (manual)
+
+The first admin is automatic (above). To promote someone else:
 
 1. Create an invite with `supabase/seed/first_invite.sql` (SQL editor; the code appears in the result), then sign up at `/join` with it and finish account setup, so the account and its pending profile exist.
 2. Copy `supabase/seed/promote_admin.sql` into the Supabase SQL editor, replace the placeholder email there, and run it. Never commit the edited copy.
