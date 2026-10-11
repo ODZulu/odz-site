@@ -14,8 +14,12 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
+      // Our own worker (src/sw.ts) so it can also handle push (MVA-203).
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
       includeAssets: ['favicon.png'],
-      workbox: {
+      injectManifest: {
         // Cache fonts and images so the app works offline at a field site.
         globPatterns: ['**/*.{js,css,html,woff2,png}'],
       },

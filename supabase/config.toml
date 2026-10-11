@@ -33,3 +33,8 @@ enable_confirmations = false
 [storage]
 enabled = true
 file_size_limit = "50MiB"
+
+[functions.send-push]
+enabled = true
+# The function also checks for the service-role key itself.
+verify_jwt = true

@@ -13,6 +13,7 @@ Node 24 (`24.x`), pinned in `.nvmrc` and `package.json` engines. Vercel disconti
 - `npm run dev` - local dev server (http://localhost:5173)
 - `npm run build` - typecheck + production build (generates manifest and service worker)
 - `npm test` - Vitest, single run (Tier 1; also runs in CI on every push)
+- `npm run test:e2e` - Playwright (Tier 2); needs a local Supabase stack, see docs/TESTING.md. `npm run test:e2e:ui` runs the UI-only suite with no backend.
 - `node scripts/generate-icons.mjs` - regenerate placeholder PWA icons into `public/`
 
 ## Branch rules
@@ -37,11 +38,11 @@ This repo is PUBLIC. No member data of any kind: no real names, emails, callsign
 Every comment opens with **@opr** (plain bold text, not a real mention). Cite tickets as plain identifiers (MVA-138). "Done" only when every acceptance criterion is met and Tier 1 is green. Tier 3 (Android device check) is Dax's.
 
 ## Tests
-Tier 1: Vitest in CI on every push. Tier 2: Playwright smoke pre-release (not set up yet). Tier 3: Dax on a physical Android phone, installed PWA.
+Tier 1: Vitest in CI on every push. Tier 2: Playwright (docs/TESTING.md), CI on pull requests to `dev` against a local Supabase stack. Tier 3: Dax on a physical Android phone, installed PWA.
 
 ## Version tracking
 - App version: 0.0.1
-- Schema version: none (no tables)
+- Schema version: 10 migrations in supabase/migrations (see its README)
 - Last GO build: none
 - Active branch: dev
 

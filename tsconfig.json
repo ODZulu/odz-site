@@ -25,5 +25,8 @@
     "e2e",
     "playwright.config.ts",
     "vite.config.ts"
+  ],
+  "exclude": [
+    "src/sw.ts"
   ]
 }

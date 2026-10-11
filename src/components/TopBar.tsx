@@ -3,6 +3,7 @@ import subdued from '../assets/logos/odz-logo-subdued.png'
 import { useAuth } from '../auth/AuthProvider'
 import { formatStamp } from '../lib/format'
 import { Button } from './Button'
+import { NotificationBell } from './NotificationBell'
 import { TierMark } from './TierMark'
 
 export function TopBar({ now = new Date() }: { now?: Date }) {
@@ -22,6 +23,7 @@ export function TopBar({ now = new Date() }: { now?: Date }) {
             {profile.callsign}
           </Link>
         )}
+        <NotificationBell />
         {tierName && (
           <span className="odz-desktop-only">
             <TierMark tier={tierName} />

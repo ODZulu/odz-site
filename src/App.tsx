@@ -19,6 +19,8 @@ import Join from './pages/Join'
 import Landing from './pages/Landing'
 import Login from './pages/Login'
 import Me from './pages/Me'
+import NotificationSettings from './pages/NotificationSettings'
+import Notifications from './pages/Notifications'
 import Minutes from './pages/Minutes'
 import MinutesDetail from './pages/MinutesDetail'
 import MinutesEdit from './pages/MinutesEdit'
@@ -70,6 +72,8 @@ export default function App() {
           <Route path="/roster" element={<Roster />} />
           <Route path="/roster/:callsign" element={<RosterDetail />} />
           <Route path="/me" element={<Me />} />
+          <Route path="/notifications" element={<Notifications />} />
+          <Route path="/settings/notifications" element={<NotificationSettings />} />
           <Route path="/traffic" element={<Traffic />} />
           <Route path="/minutes" element={<Minutes />} />
           <Route path="/minutes/new" element={<MinutesEdit />} />

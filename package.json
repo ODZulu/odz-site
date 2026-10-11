@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && tsc -p tsconfig.sw.json && vite build",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -37,6 +37,9 @@
     "typescript": "^7.0.2",
     "vite": "^8.3.2",
     "vite-plugin-pwa": "^2.0.0",
-    "vitest": "^4.1.11"
+    "vitest": "^4.1.11",
+    "workbox-core": "^7.4.1",
+    "workbox-precaching": "^7.4.1",
+    "workbox-routing": "^7.4.1"
   }
 }
