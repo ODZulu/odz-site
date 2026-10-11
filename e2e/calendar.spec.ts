@@ -54,11 +54,12 @@ test('a Member sees location, directions and description', async ({ page }) => {
   await signIn(page, await seedUser('member', 'cal-mem'))
   await page.goto('/calendar')
   await expect(page.getByText(ev.title)).toBeVisible()
-  await expect(page.getByText(SECRET_LOCATION)).toBeVisible()
-  // Scope to this test's own event: earlier tests leave events on the shared stack, in no fixed order.
-  await page.locator('article', { hasText: ev.title }).getByText('Details', { exact: true }).click()
-  await expect(page.getByText(SECRET_DETAIL)).toBeVisible()
-  await expect(page.getByText(SECRET_DESCRIPTION)).toBeVisible()
+  // Scope to this test's own event: earlier tests leave events with the same texts on the shared stack.
+  const card = page.locator('article', { hasText: ev.title })
+  await expect(card.getByText(SECRET_LOCATION)).toBeVisible()
+  await card.getByText('Details', { exact: true }).click()
+  await expect(card.getByText(SECRET_DETAIL)).toBeVisible()
+  await expect(card.getByText(SECRET_DESCRIPTION)).toBeVisible()
   await expect(page.getByRole('button', { name: 'New event' })).toHaveCount(0)
 })
 
