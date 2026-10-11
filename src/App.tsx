@@ -11,11 +11,17 @@ import Members from './pages/admin/Members'
 import PendingQueue from './pages/admin/Pending'
 import Tiers from './pages/admin/Tiers'
 import { Denied, Pending } from './pages/Holding'
+import DocumentDetail from './pages/DocumentDetail'
+import DocumentEdit from './pages/DocumentEdit'
+import Documents from './pages/Documents'
 import Hq from './pages/Hq'
 import Join from './pages/Join'
 import Landing from './pages/Landing'
 import Login from './pages/Login'
 import Me from './pages/Me'
+import Minutes from './pages/Minutes'
+import MinutesDetail from './pages/MinutesDetail'
+import MinutesEdit from './pages/MinutesEdit'
 import Roster from './pages/Roster'
 import RosterDetail from './pages/RosterDetail'
 import Setup from './pages/Setup'
@@ -63,6 +69,14 @@ export default function App() {
           <Route path="/roster" element={<Roster />} />
           <Route path="/roster/:callsign" element={<RosterDetail />} />
           <Route path="/me" element={<Me />} />
+          <Route path="/minutes" element={<Minutes />} />
+          <Route path="/minutes/new" element={<MinutesEdit />} />
+          <Route path="/minutes/:id" element={<MinutesDetail />} />
+          <Route path="/minutes/:id/edit" element={<MinutesEdit />} />
+          <Route path="/documents" element={<Documents />} />
+          <Route path="/documents/new" element={<DocumentEdit />} />
+          <Route path="/documents/edit/:id" element={<DocumentEdit />} />
+          <Route path="/documents/:slug" element={<DocumentDetail />} />
           <Route path="/admin" element={<AdminLayout />}>
             <Route path="invites" element={<Invites />} />
             <Route path="pending" element={<PendingQueue />} />

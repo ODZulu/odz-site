@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { dayKey, formatDateLine, formatStampPhoenix, formatTimeL, fromLocalInput, toLocalInput } from './time'
+import { dayKey, formatDateLine, formatPlainDate, formatStampPhoenix, formatTimeL, fromLocalInput, toLocalInput } from './time'
 
 describe('Phoenix time', () => {
   // 2026-10-10 13:30 UTC is 06:30 in Phoenix (UTC-7, no daylight saving).
@@ -35,4 +35,13 @@ describe('datetime-local round trip', () => {
     expect(fromLocalInput('2026-10-10')).toBeNull()
     expect(fromLocalInput('2026-13-40T99:99')).toBeNull()
   })
+})
+
+
+describe('formatPlainDate', () => {
+  it('formats a date without shifting it', () => {
+    expect(formatPlainDate('2026-10-10')).toBe('10 OCT 2026')
+    expect(formatPlainDate('2026-01-01')).toBe('01 JAN 2026')
+  })
+  it('passes junk through unchanged', () => expect(formatPlainDate('soon')).toBe('soon'))
 })

@@ -269,7 +269,7 @@ begin
   if n <> 1 then raise exception 'FAIL: Recruit should be the default tier'; end if;
   select count(*) into n from public.tier_capabilities tc join public.tiers t on t.id = tc.tier_id
     where tc.capability_key = 'read_minutes' and t.name <> 'Clerk';
-  if n <> 6 then raise exception 'FAIL: every seeded tier should read minutes'; end if;
+  if n <> 3 then raise exception 'FAIL: Member and above (and only them) should read minutes (got %)', n; end if;
   select count(*) into n from public.tier_capabilities where capability_key = 'edit_roster';
   if n <> 1 then raise exception 'FAIL: only Command should hold edit_roster'; end if;
   select count(*) into n from public.tier_capabilities tc join public.tiers t on t.id = tc.tier_id

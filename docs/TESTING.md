@@ -59,6 +59,8 @@ There is no service-role fallback against the hosted dev project: the service-ro
 
 * `e2e/directory.spec.ts` (backend): the roster lists approved members, is searchable and hides pending accounts; a member edits their own profile and a script in the bio stays inert; private details show only to the owner and Command; a member cannot rename themselves or change their tier through the API.
 
+* `e2e/archive.spec.ts` (backend, needs the storage service): a Recruit gets nothing from minutes or documents; Command writes minutes with a file, a disguised executable is refused, a draft stays hidden until published, a script in the notes renders inert; stored files are unreachable without a signed link; document drafts stay hidden and ratifying a new version supersedes the old one.
+
 New tickets add their suites to `e2e/` and list them here.
 
 ## Failure artifacts

@@ -34,6 +34,8 @@ Apply files in filename order to the ODZ Supabase project (SQL editor or `supaba
 
 `20261011160000_profiles_directory.sql` (MVA-204): `profiles.role_note` (<=60), `bio` (<=280), `joined_at` (first approval; backfilled). Members edit only display name, role note and bio through `update_own_profile()`; direct updates of profiles are closed except tier, status and is_admin for roster managers (the own-row update policy is gone). `set_callsign()` (edit_roster) and `update_own_private()` added; profile edits are audited by field name only.
 
+`20261011170000_minutes_documents.sql` (MVA-202): `minutes`, `minutes_files`, `documents` with RLS; private `minutes` storage bucket (10 MB cap, extension whitelist, path-shape and write_minutes policies on `storage.objects`; created only where the storage schema exists). New capabilities `read_documents` (Member and above) and `publish_documents` (Command); `read_minutes` removed from Recruit, Prospect and Contractor. One ratified version per slug (DB index; ratifying supersedes the old one). Content sniffing by magic bytes happens in the app before upload. Nothing is seeded.
+
 ## Dashboard settings this schema assumes (Auth)
 
 * Email confirmation OFF (no SMTP yet, MVA-200).

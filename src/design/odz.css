@@ -138,7 +138,8 @@
 
   /* nav becomes a fixed bottom tab bar */
   .odz-nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; justify-content: stretch; padding: 0 0 env(safe-area-inset-bottom); border-top: 1px solid var(--line); border-bottom: 0; }
-  .odz-nav a { flex: 1 1 0; justify-content: center; min-height: var(--tabbar-h); padding: 0 .25rem; font-size: .75rem; letter-spacing: .14em; }
+  .odz-nav a { flex: 1 1 0; justify-content: center; min-height: var(--tabbar-h); padding: 0 .125rem; font-size: .6875rem; letter-spacing: .06em; }
+  .odz-nav { overflow-x: auto; }
   .odz-nav a[aria-current] { box-shadow: inset 0 3px 0 var(--primary); }
 
   /* forms: full-width controls */
@@ -201,3 +202,16 @@
 .odz-event__time { font-family: var(--f-data); color: var(--primary); }
 .odz-event__title { font-family: var(--f-head); font-weight: 700; font-size: 1.25rem; letter-spacing: .03em; }
 .odz-event summary { cursor: pointer; min-height: var(--touch); display: flex; align-items: center; color: var(--primary); }
+
+/* print: documents and minutes print as plain pages */
+@media print {
+  .odz-bar, .odz-nav, .odz-noprint, .odz-subnav { display: none !important; }
+  body, .odz { background: white !important; color: black !important; }
+  .odz-page { padding: 0 !important; }
+  .odz-panel { background: white !important; border: 0 !important; }
+  .odz-panel__h { background: white !important; border-bottom: 1px solid black !important; padding-left: 0 !important; }
+  .odz-panel__h .odz-label, .odz-title, .odz-md h2, .odz-md a { color: black !important; }
+  .odz-md a::after { content: " (" attr(href) ")"; font-size: .8em; }
+  .odz-md a[href^="#"]::after { content: ""; }
+  .odz-md pre { background: white !important; border: 1px solid black !important; white-space: pre-wrap; }
+}
