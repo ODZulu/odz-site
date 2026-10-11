@@ -8,7 +8,6 @@ begin;
 do $$
 declare
   v_boot   uuid := '00000000-0000-0000-0000-0000000000f1';
-  v_boot2  uuid := '00000000-0000-0000-0000-0000000000f2';
   v_cmd    uuid := '00000000-0000-0000-0000-0000000000c1';
   v_mem    uuid := '00000000-0000-0000-0000-0000000000b1';
   v_new    uuid := '00000000-0000-0000-0000-0000000000d1';
@@ -25,22 +24,12 @@ begin
   select id into t_recruit from public.tiers where name = 'Recruit';
   select id into t_contractor from public.tiers where name = 'Contractor';
 
-  ------------------------------------------------------------------ initial admin
-  -- Skipped on a database that already has its real admin.
-  if not exists (select 1 from public.profiles where is_admin) then
+  ------------------------------------------------------------------ no address is exempt from the invite
+  begin
     insert into auth.users (id, email, aud, role)
-    values (v_boot, 'DetachmentZulu@gmail.com', 'authenticated', 'authenticated');
-    select count(*) into n from public.profiles
-      where id = v_boot and callsign = 'ODZ Admin' and display_name = 'ODZ Admin'
-        and is_admin and status = 'approved' and setup_complete;
-    if n <> 1 then raise exception 'FAIL: initial admin not created as ODZ Admin'; end if;
-    -- Only while no admin exists: a second registration of that address needs an invite.
-    begin
-      insert into auth.users (id, email, aud, role)
-      values (v_boot2, 'detachmentzulu@gmail.com', 'authenticated', 'authenticated');
-      raise exception 'FAIL: bootstrap address skipped the invite after an admin existed';
-    exception when others then if sqlerrm like 'FAIL:%' then raise; end if; if sqlerrm <> 'Invite not valid' then raise exception 'FAIL: wrong rejection (%)', sqlerrm; end if; end;
-  end if;
+    values (v_boot, 'detachmentzulu@gmail.com', 'authenticated', 'authenticated');
+    raise exception 'FAIL: an address skipped the invite';
+  exception when others then if sqlerrm like 'FAIL:%' then raise; end if; if sqlerrm <> 'Invite not valid' then raise exception 'FAIL: wrong rejection (%)', sqlerrm; end if; end;
 
   -- Bootstrap fixtures (trusted, no JWT): a Command member and an approved Member.
   insert into public.invites (code, tier_id) values
