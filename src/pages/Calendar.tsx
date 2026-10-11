@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useAuth } from '../auth/AuthProvider'
 import { Button, Chip, ConfirmAction, Field, Panel, Select, Textarea } from '../components'
+import { RsvpToggle } from '../components/RsvpPanel'
 import {
   createEvent,
   emptyEventForm,
@@ -108,6 +109,7 @@ export default function Calendar() {
             {e.description && <Markdown source={e.description} />}
           </details>
         )}
+        {detail && <RsvpToggle event={e} />}
         {write && (
           <div className="odz-row" style={{ marginTop: '0.5rem' }}>
             <Button small variant="sec" onClick={() => { setErrors({}); setEditing({ id: e.id, form: formFrom(e) }) }}>

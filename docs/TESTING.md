@@ -61,6 +61,8 @@ There is no service-role fallback against the hosted dev project: the service-ro
 
 * `e2e/archive.spec.ts` (backend, needs the storage service): a Recruit gets nothing from minutes or documents; Command writes minutes with a file, a disguised executable is refused, a draft stays hidden until published, a script in the notes renders inert; stored files are unreachable without a signed link; document drafts stay hidden and ratifying a new version supersedes the old one.
 
+* `e2e/hq.spec.ts` (backend): every HQ panel has an empty state and anon reads no traffic; Command posts traffic, a Member sees it pinned first as plain text and cannot post, archived posts disappear for members; RSVP answers update the readiness counts and a past event is closed.
+
 New tickets add their suites to `e2e/` and list them here.
 
 ## Failure artifacts

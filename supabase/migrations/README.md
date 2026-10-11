@@ -36,6 +36,8 @@ Apply files in filename order to the ODZ Supabase project (SQL editor or `supaba
 
 `20261011170000_minutes_documents.sql` (MVA-202): `minutes`, `minutes_files`, `documents` with RLS; private `minutes` storage bucket (10 MB cap, extension whitelist, path-shape and write_minutes policies on `storage.objects`; created only where the storage schema exists). New capabilities `read_documents` (Member and above) and `publish_documents` (Command); `read_minutes` removed from Recruit, Prospect and Contractor. One ratified version per slug (DB index; ratifying supersedes the old one). Content sniffing by magic bytes happens in the app before upload. Nothing is seeded.
 
+`20261011180000_hq_panels.sql` (MVA-142): `write_traffic` (Command), `traffic` (archive only, titles-only audit), `event_rsvps` (own row, only before an event starts, never for a cancelled one), `event_readiness()` and `tier_breakdown()` (counts only). `tiers.counts_for_readiness` marks which tiers count toward readiness (Command, Old Guard, Member, Contractor); it is data on the tier, not edited from the admin screen yet.
+
 ## Dashboard settings this schema assumes (Auth)
 
 * Email confirmation OFF (no SMTP yet, MVA-200).

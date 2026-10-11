@@ -25,6 +25,7 @@ import MinutesEdit from './pages/MinutesEdit'
 import Roster from './pages/Roster'
 import RosterDetail from './pages/RosterDetail'
 import Setup from './pages/Setup'
+import Traffic from './pages/Traffic'
 
 /** The calendar is public: signed-in members get the full shell, everyone else the public frame. */
 function CalendarRoute() {
@@ -69,6 +70,7 @@ export default function App() {
           <Route path="/roster" element={<Roster />} />
           <Route path="/roster/:callsign" element={<RosterDetail />} />
           <Route path="/me" element={<Me />} />
+          <Route path="/traffic" element={<Traffic />} />
           <Route path="/minutes" element={<Minutes />} />
           <Route path="/minutes/new" element={<MinutesEdit />} />
           <Route path="/minutes/:id" element={<MinutesDetail />} />
