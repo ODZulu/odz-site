@@ -161,3 +161,6 @@
   .odz-splash__patch { width: 12rem; height: 12rem; align-self: center; }
   .odz-fullname { font-size: 1.125rem; white-space: normal; }
 }
+
+/* pre-app pages: login, join, account setup, pending (MVA-199) */
+.odz-gate { max-width: 32rem; margin: 0 auto; }

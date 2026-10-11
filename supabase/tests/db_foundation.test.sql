@@ -1,4 +1,4 @@
--- Tier 1 database tests for MVA-198 (both migrations). Plain SQL, no extensions.
+-- Tier 1 database tests for MVA-198 (all migrations; signup needs an invite since MVA-199). Plain SQL, no extensions.
 -- Run against a dev or branch database (SQL editor, psql, or MCP execute_sql).
 -- Everything happens inside one transaction that is rolled back, and all users are fake.
 -- Success: the notice "db_foundation: ALL PASS". Any failure raises an exception.
@@ -26,18 +26,24 @@ begin
   select id into t_member  from public.tiers where name = 'Member';
   select id into t_contractor from public.tiers where name = 'Contractor';
 
-  -- Fake users; the signup trigger must give each a pending profile.
-  insert into auth.users (id, email, aud, role) values
-    (v_admin,   'admin@example.invalid',   'authenticated', 'authenticated'),
-    (v_admin2,  'admin2@example.invalid',  'authenticated', 'authenticated'),
-    (v_command, 'command@example.invalid', 'authenticated', 'authenticated'),
-    (v_member,  'member@example.invalid',  'authenticated', 'authenticated'),
-    (v_pending, 'pending@example.invalid', 'authenticated', 'authenticated'),
-    (v_pending2, 'pending2@example.invalid', 'authenticated', 'authenticated'),
-    (v_clerk,   'clerk@example.invalid',   'authenticated', 'authenticated');
+  -- Signup needs an invite: one single-use fake code per fake user.
+  insert into public.invites (code, tier_id)
+  select 'faketestcode' || g, (select id from public.tiers where name = 'Recruit')
+  from generate_series(1, 7) g;
 
-  select count(*) into n from public.profiles where status = 'pending' and tier_id is null
-    and id in (v_admin, v_admin2, v_command, v_member, v_pending, v_pending2, v_clerk);
+  -- Fake users; the signup trigger must give each a pending profile at the invited tier.
+  insert into auth.users (id, email, aud, role, raw_user_meta_data) values
+    (v_admin,   'admin@example.invalid',   'authenticated', 'authenticated', '{"invite_code":"faketestcode1"}'),
+    (v_admin2,  'admin2@example.invalid',  'authenticated', 'authenticated', '{"invite_code":"faketestcode2"}'),
+    (v_command, 'command@example.invalid', 'authenticated', 'authenticated', '{"invite_code":"faketestcode3"}'),
+    (v_member,  'member@example.invalid',  'authenticated', 'authenticated', '{"invite_code":"faketestcode4"}'),
+    (v_pending, 'pending@example.invalid', 'authenticated', 'authenticated', '{"invite_code":"faketestcode5"}'),
+    (v_pending2, 'pending2@example.invalid', 'authenticated', 'authenticated', '{"invite_code":"faketestcode6"}'),
+    (v_clerk,   'clerk@example.invalid',   'authenticated', 'authenticated', '{"invite_code":"faketestcode7"}');
+
+  select count(*) into n from public.profiles p join public.tiers t on t.id = p.tier_id
+    where p.status = 'pending' and t.name = 'Recruit'
+    and p.id in (v_admin, v_admin2, v_command, v_member, v_pending, v_pending2, v_clerk);
   if n <> 7 then raise exception 'FAIL: signup trigger did not create 7 pending profiles (got %)', n; end if;
 
   -- Trusted setup (no JWT): one admin, a Command, a Member.

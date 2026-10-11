@@ -1,12 +1,12 @@
 import { Link } from 'react-router'
 import subdued from '../assets/logos/odz-logo-subdued.png'
+import { useAuth } from '../auth/AuthProvider'
 import { formatStamp } from '../lib/format'
+import { Button } from './Button'
 import { TierMark } from './TierMark'
 
-// Placeholder identity until auth lands (MVA-199). Obviously fake; the repo is public.
-const PLACEHOLDER = { callsign: 'SAMPLE-1', tier: 'Member' }
-
 export function TopBar({ now = new Date() }: { now?: Date }) {
+  const { profile, tierName, signOut } = useAuth()
   return (
     <header className="odz-bar">
       <Link to="/" className="odz-brand" aria-label="ODZ home">
@@ -17,10 +17,15 @@ export function TopBar({ now = new Date() }: { now?: Date }) {
       </Link>
       <span className="odz-label odz-desktop-only">{formatStamp(now)}</span>
       <span className="odz-row">
-        <span className="odz-label">{PLACEHOLDER.callsign}</span>
-        <span className="odz-desktop-only">
-          <TierMark tier={PLACEHOLDER.tier} />
-        </span>
+        {profile?.callsign && <span className="odz-label">{profile.callsign}</span>}
+        {tierName && (
+          <span className="odz-desktop-only">
+            <TierMark tier={tierName} />
+          </span>
+        )}
+        <Button variant="ghost" small onClick={() => void signOut()}>
+          Sign out
+        </Button>
       </span>
     </header>
   )
