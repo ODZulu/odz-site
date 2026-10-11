@@ -28,7 +28,10 @@ create table public.notification_prefs (
 create table public.push_subscriptions (
   id uuid primary key default gen_random_uuid(),
   profile_id uuid not null default auth.uid() references public.profiles (id) on delete cascade,
-  endpoint text not null unique check (endpoint ~ '^https://' and length(endpoint) <= 2000),
+  -- Only the real browser push services: the sender will POST to whatever is stored here.
+  endpoint text not null unique check (
+    length(endpoint) <= 2000 and endpoint ~* '^https://(fcm.googleapis.com|[a-z0-9.-]+.push.services.mozilla.com|[a-z0-9.-]+.push.apple.com|[a-z0-9.-]+.notify.windows.com)/'
+  ),
   p256dh text not null check (length(p256dh) between 20 and 200),
   auth text not null check (length(auth) between 8 and 100),
   user_agent text check (user_agent is null or length(user_agent) <= 300),
@@ -273,6 +276,7 @@ begin
     )
     select c.id, c.title, c.body, c.link, s.id, s.endpoint, s.p256dh, s.auth
     from claimed c
+    join public.profiles pr on pr.id = c.profile_id and pr.status = 'approved'
     join public.notification_prefs np on np.profile_id = c.profile_id and np.push_enabled
     join public.push_subscriptions s on s.profile_id = c.profile_id;
 end;

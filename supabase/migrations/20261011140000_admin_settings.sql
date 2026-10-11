@@ -412,7 +412,8 @@ begin
     raise exception 'not allowed' using errcode = '42501';
   end if;
   if exists (select 1 from public.tiers t where t.id = p_id and (t.entry_requires_tier_id is not null or t.release_to_tier_id is not null))
-     or exists (select 1 from public.tiers t where t.entry_requires_tier_id = p_id or t.release_to_tier_id = p_id) then
+     or exists (select 1 from public.tiers t where t.entry_requires_tier_id = p_id or t.release_to_tier_id = p_id)
+     or exists (select 1 from public.invites i where i.tier_id = p_id) then
     raise exception 'tier_in_rules' using errcode = 'P0001';
   end if;
   delete from public.tiers where id = p_id;

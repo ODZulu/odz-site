@@ -157,15 +157,15 @@ begin
   exception when others then if sqlerrm like 'FAIL:%' then raise; end if; end;
 
   ------------------------------------------------------------------ subscriptions
-  perform public.register_push_subscription('https://push.example.invalid/endpoint/one', 'fake-p256dh-key-abcdefghij', 'fake-auth-0123', 'Fake Browser');
-  begin perform public.register_push_subscription('http://push.example.invalid/insecure', 'fake-p256dh-key-abcdefghij', 'fake-auth-0123'); raise exception 'FAIL: http endpoint accepted';
+  perform public.register_push_subscription('https://fcm.googleapis.com/fcm/send/fake-one', 'fake-p256dh-key-abcdefghij', 'fake-auth-0123', 'Fake Browser');
+  begin perform public.register_push_subscription('https://evil.example.invalid/push', 'fake-p256dh-key-abcdefghij', 'fake-auth-0123'); raise exception 'FAIL: a non-push-service endpoint was accepted';
   exception when others then if sqlerrm like 'FAIL:%' then raise; end if; end;
   select count(*) into n from public.push_subscriptions; if n <> 1 then raise exception 'FAIL: own subscription missing'; end if;
   begin perform p256dh from public.push_subscriptions; raise exception 'FAIL: client can read subscription keys';
   exception when others then if sqlerrm like 'FAIL:%' then raise; end if; end;
   begin perform auth from public.push_subscriptions; raise exception 'FAIL: client can read the auth secret';
   exception when others then if sqlerrm like 'FAIL:%' then raise; end if; end;
-  begin insert into public.push_subscriptions (endpoint, p256dh, auth) values ('https://x.example.invalid/a', 'fake-p256dh-key-abcdefghij', 'fake-auth-0123'); raise exception 'FAIL: direct subscription insert';
+  begin insert into public.push_subscriptions (endpoint, p256dh, auth) values ('https://fcm.googleapis.com/fcm/send/direct', 'fake-p256dh-key-abcdefghij', 'fake-auth-0123'); raise exception 'FAIL: direct subscription insert';
   exception when others then if sqlerrm like 'FAIL:%' then raise; end if; end;
 
   -- Test notification: once a minute.
@@ -177,19 +177,19 @@ begin
   reset role;
   perform set_config('request.jwt.claims', json_build_object('sub', v_late, 'role', 'authenticated')::text, true);
   set local role authenticated;
-  perform public.register_push_subscription('https://push.example.invalid/endpoint/one', 'fake-p256dh-key-abcdefghij', 'fake-auth-0123', 'Fake Browser');
+  perform public.register_push_subscription('https://fcm.googleapis.com/fcm/send/fake-one', 'fake-p256dh-key-abcdefghij', 'fake-auth-0123', 'Fake Browser');
   select count(*) into n from public.push_subscriptions; if n <> 1 then raise exception 'FAIL: device did not move to the new account'; end if;
   reset role;
   perform set_config('request.jwt.claims', json_build_object('sub', v_mem, 'role', 'authenticated')::text, true);
   set local role authenticated;
   select count(*) into n from public.push_subscriptions; if n <> 0 then raise exception 'FAIL: previous owner still sees the device'; end if;
-  perform public.register_push_subscription('https://push.example.invalid/endpoint/two', 'fake-p256dh-key-abcdefghij', 'fake-auth-0123', 'Fake Browser');
+  perform public.register_push_subscription('https://fcm.googleapis.com/fcm/send/fake-two', 'fake-p256dh-key-abcdefghij', 'fake-auth-0123', 'Fake Browser');
 
   ------------------------------------------------------------------ pending and anon
   reset role;
   perform set_config('request.jwt.claims', json_build_object('sub', v_pend, 'role', 'authenticated')::text, true);
   set local role authenticated;
-  begin perform public.register_push_subscription('https://push.example.invalid/endpoint/p', 'fake-p256dh-key-abcdefghij', 'fake-auth-0123'); raise exception 'FAIL: pending registered a device';
+  begin perform public.register_push_subscription('https://fcm.googleapis.com/fcm/send/fake-p', 'fake-p256dh-key-abcdefghij', 'fake-auth-0123'); raise exception 'FAIL: pending registered a device';
   exception when others then if sqlerrm like 'FAIL:%' then raise; end if; end;
   begin perform public.send_test_notification(); raise exception 'FAIL: pending sent a test notification';
   exception when others then if sqlerrm like 'FAIL:%' then raise; end if; end;
@@ -214,7 +214,7 @@ begin
   -- Only members with push enabled and a subscription come back; everything is marked sent.
   select count(*) into n from public.notifications where push_sent_at is null;
   if n = 0 then raise exception 'FAIL: expected unsent notifications'; end if;
-  select count(*) into n from public.claim_pushes(500) c where c.endpoint = 'https://push.example.invalid/endpoint/two';
+  select count(*) into n from public.claim_pushes(500) c where c.endpoint = 'https://fcm.googleapis.com/fcm/send/fake-two';
   if n < 1 then raise exception 'FAIL: the member with push on should have rows to send'; end if;
   select count(*) into n from public.notifications where push_sent_at is null;
   if n <> 0 then raise exception 'FAIL: claim should mark every notification sent (left %)', n; end if;

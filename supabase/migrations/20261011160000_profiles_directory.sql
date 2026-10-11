@@ -218,7 +218,7 @@ create function public.assert_private_valid(
   p_emergency_name text, p_emergency_relationship text, p_emergency_phone text
 )
 returns void
-language plpgsql immutable set search_path = ''
+language plpgsql stable set search_path = ''
 as $$
 declare
   v_phone text := nullif(btrim(coalesce(p_phone, '')), '');

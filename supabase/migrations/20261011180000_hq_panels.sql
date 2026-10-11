@@ -6,9 +6,13 @@
 --   * RSVP is IN / OUT / TBD per member per event; a member changes only their own, only until the
 --     event starts, and never for a cancelled event.
 --   * Readiness counts IN against the eligible members: approved members whose tier has
---     counts_for_readiness (Command, Old Guard, Member, Contractor). That is data on the tier, so it
+--     counts_for_readiness (Command, Old Guard, Member). Contractor is NOT counted: the calendar spec
+--     withholds event details (and so RSVP) from Contractor, and a member who cannot answer would
+--     only inflate the no-response count. Turn it on for Contractor together with read_event_details. That is data on the tier, so it
 --     follows tier renames and reordering.
---   * The tier breakdown is a function that returns (tier, count) only.
+--   * The tier breakdown is a function that returns (tier, count) only. RSVP answers themselves are
+--     visible by callsign to members with read_event_details (the spec lists callsigns by answer
+--     on the event page); the public and the tier breakdown never see names.
 
 insert into public.capabilities (key, description) values
   ('write_traffic', 'Post and archive traffic (announcements)');
@@ -17,7 +21,7 @@ insert into public.tier_capabilities (tier_id, capability_key)
 select t.id, 'write_traffic' from public.tiers t where t.name = 'Command';
 
 alter table public.tiers add column counts_for_readiness boolean not null default false;
-update public.tiers set counts_for_readiness = true where name in ('Command', 'Old Guard', 'Member', 'Contractor');
+update public.tiers set counts_for_readiness = true where name in ('Command', 'Old Guard', 'Member');
 
 ------------------------------------------------------------------------------
 -- Traffic

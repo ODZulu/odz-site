@@ -41,10 +41,10 @@ begin
   ------------------------------------------------------------------ seed
   select count(*) into n from public.tier_capabilities where capability_key = 'write_traffic';
   if n <> 1 then raise exception 'FAIL: only Command should post traffic'; end if;
-  select count(*) into n from public.tiers where counts_for_readiness and name in ('Command', 'Old Guard', 'Member', 'Contractor');
-  if n <> 4 then raise exception 'FAIL: readiness tiers wrong'; end if;
-  select count(*) into n from public.tiers where counts_for_readiness and name in ('Prospect', 'Recruit');
-  if n <> 0 then raise exception 'FAIL: Prospect and Recruit must not count for readiness'; end if;
+  select count(*) into n from public.tiers where counts_for_readiness and name in ('Command', 'Old Guard', 'Member');
+  if n <> 3 then raise exception 'FAIL: readiness tiers wrong'; end if;
+  select count(*) into n from public.tiers where counts_for_readiness and name in ('Contractor', 'Prospect', 'Recruit');
+  if n <> 0 then raise exception 'FAIL: Contractor, Prospect and Recruit must not count for readiness'; end if;
 
   ------------------------------------------------------------------ traffic
   perform set_config('request.jwt.claims', json_build_object('sub', v_cmd, 'role', 'authenticated')::text, true);

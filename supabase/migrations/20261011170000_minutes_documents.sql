@@ -292,18 +292,27 @@ begin
     return;
   end if;
 
-  insert into storage.buckets (id, name, public, file_size_limit)
-  values ('minutes', 'minutes', false, 10485760)
-  on conflict (id) do update set public = false, file_size_limit = 10485760;
+  insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+  values ('minutes', 'minutes', false, 10485760, array[
+    'application/pdf', 'text/plain', 'text/markdown',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  ])
+  on conflict (id) do update set public = false, file_size_limit = 10485760,
+    allowed_mime_types = excluded.allowed_mime_types;
 
   execute $p$
     create policy minutes_objects_select on storage.objects
       for select to authenticated
       using (
-        bucket_id = 'minutes' and exists (
-          select 1 from public.minutes_files f join public.minutes m on m.id = f.minutes_id
-          where f.storage_path = storage.objects.name
-            and ((m.status = 'published' and public.has_capability('read_minutes')) or public.has_capability('write_minutes'))
+        bucket_id = 'minutes' and (
+          -- Writers can see every object in the bucket. This also lets an upload return its new row
+          -- before its minutes_files row exists (upload first, record second).
+          public.has_capability('write_minutes')
+          or exists (
+            select 1 from public.minutes_files f join public.minutes m on m.id = f.minutes_id
+            where f.storage_path = storage.objects.name
+              and m.status = 'published' and public.has_capability('read_minutes')
+          )
         )
       )
   $p$;
