@@ -33,9 +33,15 @@ jobs:
       - run: npm ci
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 2.120.0
       - name: Start local Supabase (applies supabase/migrations in order)
         run: supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor
+      - name: SQL tests (Tier 1 database tests on the clean local database)
+        run: |
+          for f in supabase/tests/*.test.sql; do
+            echo "== $f"
+            supabase db query --local -f "$f"
+          done
       - name: Export local keys (masked)
         run: |
           eval "$(supabase status -o env)"

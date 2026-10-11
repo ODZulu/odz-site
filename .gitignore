@@ -12,3 +12,6 @@ dev-dist
 playwright-report/
 test-results/
 .env.e2e
+
+# Supabase CLI link state (project ref)
+supabase/.temp/

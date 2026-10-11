@@ -7,7 +7,7 @@ How the ODZ site gets from this repo to production. Anything marked **Dax** is d
 | | Supabase project | Vercel scope |
 | --- | --- | --- |
 | Development and previews | the dev project | Preview and Development env vars |
-| Production | a separate prod project (MVA-140) | Production env vars |
+| Production | ODZ-Prod, a separate prod project (MVA-140), served at https://odzulu.com | Production env vars |
 
 Vercel env vars (set by **Dax** in the dashboard):
 
@@ -25,10 +25,16 @@ Vite bakes env vars in at build time: after changing one, redeploy.
 
 ## 2. Apply the migrations (from the folder, in order, never ad hoc SQL)
 
+The Supabase CLI is pinned as a devDependency (`supabase` 2.120.0, exact version in `package.json`); use `npx supabase ...` or the npm scripts, never `npx supabase@latest`. Log in once in your own terminal with `npx supabase login`.
+
 ```
-supabase link --project-ref <prod-ref>
-supabase db push
+npx supabase link --project-ref <prod-ref>
+npm run db:list        # local vs remote history
+npm run db:push:dry    # what would be applied
+npm run db:push        # apply, in order
 ```
+
+**All migrations are applied only with `db push` from this repo**, never through the dashboard SQL editor or an MCP/connector. Those record their own timestamps, so local and remote history diverge (this happened once on dev and was fixed with `supabase migration repair`). Prod starts clean this way. Dax runs the prod push in his own terminal after reviewing the dry run.
 
 `supabase/migrations/` is the whole schema: tiers, capabilities, profiles, invites, private data, events, minutes, documents, HQ tables, notifications and the private `minutes` storage bucket. Tiers and capabilities are seeded by the migrations; **no test or sample data goes to prod**.
 
@@ -67,7 +73,7 @@ supabase secrets set VAPID_PUBLIC_KEY=<public> VAPID_PRIVATE_KEY=<private> VAPID
 supabase functions deploy send-push
 ```
 
-Set the **public** key as `VITE_VAPID_PUBLIC_KEY` in Vercel. The private key lives only in the function's secrets. Then run `supabase/seed/schedule_push.sql` once per environment (it needs the project URL and service-role key in Vault; instructions at the top of that file). `generate_reminders()` is scheduled by the migration itself every 5 minutes, when pg_cron is available. If the project pauses (free tier), reminders stop (MVA-140).
+Set the **public** key as `VITE_VAPID_PUBLIC_KEY` in Vercel (Production scope for the prod key pair; Preview/Development keep the dev pair), then redeploy. Dax sets the private key as an Edge Function secret on that project (Dashboard > Edge Functions > Secrets, or `supabase secrets set` as above). The private key lives only in the function's secrets. Then run `supabase/seed/schedule_push.sql` once per environment (it needs the project URL and service-role key in Vault; instructions at the top of that file). `generate_reminders()` is scheduled by the migration itself every 5 minutes, when pg_cron is available. If the project pauses (free tier), reminders stop (MVA-140).
 
 ## 6. Advisors and audit
 
@@ -77,7 +83,22 @@ Set the **public** key as `VITE_VAPID_PUBLIC_KEY` in Vercel. The private key liv
 
 ## 7. Backups and restore
 
-Pro: daily backups are on by default (Dashboard > Database > Backups); point-in-time recovery is an add-on. To restore: pick the backup in the dashboard and restore, then check `select count(*) from public.profiles` and sign in as the Admin. Record the date of the last restore test here.
+**Pro:** daily backups are on by default (Dashboard > Database > Backups); point-in-time recovery is an add-on. To restore: pick the backup in the dashboard and restore, then check `select count(*) from public.profiles` and sign in as the Admin. Record the date of the last restore test here.
+
+**Free plan (current state of ODZ-Prod, pending Dax's plan decision on MVA-140):** there are no automatic backups and the project pauses after about a week of inactivity. Until the plan is decided:
+
+* Keep the pilot to 2-3 trusted members.
+* **Manual backup, weekly and before any migration.** Run from a machine Dax controls, with the prod database password entered at the prompt (never stored in a file or the repo):
+
+  ```
+  npx supabase link --project-ref <prod-ref>
+  npx supabase db dump -f ../odz-prod-schema.sql
+  npx supabase db dump --data-only -f ../odz-prod-data.sql
+  ```
+
+  Write the dumps **outside the repo** (they contain member private data) into an encrypted location such as the password manager's file vault or an encrypted drive. Keep the last 4. Files in the `minutes` storage bucket are not in the dump; download them from Dashboard > Storage if needed.
+* **Restore:** create a fresh project, `supabase db push` the migrations, then load the data dump with `psql`; re-point the Vercel Production env vars and redeploy.
+* **Keep-alive:** a paused project also stops the pg_cron reminders. Any request to the project resets the inactivity clock, so open the site or sign in at least every few days (or restore the paused project from the dashboard). Upgrading to Pro removes this.
 
 ## 8. Pre-release audit (MVA-206)
 
