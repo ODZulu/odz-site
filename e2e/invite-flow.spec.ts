@@ -89,10 +89,15 @@ test('a pending account cannot reach the app', async ({ page }) => {
   const u = await seedUser('pending-setup-done', 'pend')
   await signIn(page, u.email)
   await expect(page).toHaveURL(/\/pending$/)
-  for (const path of ['/hq', '/roster', '/calendar']) {
+  for (const path of ['/hq', '/roster']) {
     await page.goto(path)
     await expect(page).toHaveURL(/\/pending$/)
   }
+  // The calendar is public by design (MVA-201): a pending account gets the public frame, not the app shell.
+  await page.goto('/calendar')
+  await expect(page).toHaveURL(/\/calendar$/)
+  await expect(page.getByRole('link', { name: 'Sign in' })).toBeVisible()
+  await expect(page.getByRole('navigation', { name: 'Main' })).toHaveCount(0)
 })
 
 test('an account that skipped setup is sent to setup', async ({ page }) => {

@@ -115,9 +115,22 @@ export async function loadRsvps(eventId: string): Promise<RsvpRow[]> {
   return data as unknown as RsvpRow[]
 }
 
+/**
+ * Update the member's own answer, or insert the first one. Not an upsert: `upsert` would also set
+ * event_id on conflict, and members hold UPDATE on `response` only. RLS limits the update to the
+ * member's own row, so a zero-row result means there is no answer yet.
+ */
 export async function saveRsvp(eventId: string, response: Rsvp): Promise<void> {
-  const { error } = await supabase!.from('event_rsvps').upsert({ event_id: eventId, response }, { onConflict: 'event_id,profile_id' })
-  if (error) throw new Error('rsvps')
+  const rsvps = supabase!.from('event_rsvps')
+  const upd = await rsvps.update({ response }).eq('event_id', eventId).select('event_id')
+  if (upd.error) throw new Error('rsvps')
+  if ((upd.data ?? []).length > 0) return
+  const ins = await supabase!.from('event_rsvps').insert({ event_id: eventId, response })
+  if (!ins.error) return
+  if (ins.error.code !== '23505') throw new Error('rsvps')
+  // Lost a race with another tab's first answer: it exists now, so update it.
+  const again = await supabase!.from('event_rsvps').update({ response }).eq('event_id', eventId)
+  if (again.error) throw new Error('rsvps')
 }
 
 export async function loadReadiness(eventId: string): Promise<Readiness> {
