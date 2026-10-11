@@ -90,7 +90,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signIn = useCallback(async (email: string, password: string) => {
     if (!supabase) return 'Sign-in is not available.'
     const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
-    return error ? 'Email or password is incorrect.' : null
+    if (!error) return null
+    // Only a real credentials failure says "incorrect"; a misconfigured or unreachable backend must not look like a typo.
+    return error.code === 'invalid_credentials' || error.status === 400
+      ? 'Email or password is incorrect.'
+      : 'Could not reach the sign-in service. Try again, and tell Command if it keeps happening.'
   }, [])
 
   const signOut = useCallback(async () => {
