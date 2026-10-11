@@ -213,19 +213,19 @@ begin
 
   -- Validation (fixed error codes, no values echoed).
   begin
-    perform public.complete_setup('x', 'Fake Name', date '1990-01-01', null, 'None', 'Fake Contact', 'Friend', '555 010 0100');
+    perform public.complete_setup('x', 'Fake Name', date '1990-01-01', null, 'None', 'Fake Contact', 'Friend', '555-010-0100');
     raise exception 'FAIL: 1-char callsign accepted';
   exception when others then if sqlerrm like 'FAIL:%' then raise; end if; if sqlerrm <> 'invalid_callsign' then raise exception 'FAIL: wrong error %', sqlerrm; end if; end;
   begin
-    perform public.complete_setup('FAKE-ONE!', 'Fake Name', date '1990-01-01', null, 'None', 'Fake Contact', 'Friend', '555 010 0100');
+    perform public.complete_setup('FAKE-ONE!', 'Fake Name', date '1990-01-01', null, 'None', 'Fake Contact', 'Friend', '555-010-0100');
     raise exception 'FAIL: bad callsign chars accepted';
   exception when others then if sqlerrm like 'FAIL:%' then raise; end if; end;
   begin
-    perform public.complete_setup('FAKE-ONE', 'Fake Name', current_date + 1, null, 'None', 'Fake Contact', 'Friend', '555 010 0100');
+    perform public.complete_setup('FAKE-ONE', 'Fake Name', current_date + 1, null, 'None', 'Fake Contact', 'Friend', '555-010-0100');
     raise exception 'FAIL: future DOB accepted';
   exception when others then if sqlerrm like 'FAIL:%' then raise; end if; if sqlerrm <> 'invalid_dob' then raise exception 'FAIL: wrong error %', sqlerrm; end if; end;
   begin
-    perform public.complete_setup('FAKE-ONE', 'Fake Name', date '1990-01-01', null, '  ', 'Fake Contact', 'Friend', '555 010 0100');
+    perform public.complete_setup('FAKE-ONE', 'Fake Name', date '1990-01-01', null, '  ', 'Fake Contact', 'Friend', '555-010-0100');
     raise exception 'FAIL: blank allergies accepted';
   exception when others then if sqlerrm like 'FAIL:%' then raise; end if; end;
   begin
@@ -233,11 +233,11 @@ begin
     raise exception 'FAIL: bad emergency phone accepted';
   exception when others then if sqlerrm like 'FAIL:%' then raise; end if; end;
   begin
-    perform public.complete_setup('FAKE-ONE', 'Fake Name', date '1990-01-01', 'nope', 'None', 'Fake Contact', 'Friend', '555 010 0100');
+    perform public.complete_setup('FAKE-ONE', 'Fake Name', date '1990-01-01', 'nope', 'None', 'Fake Contact', 'Friend', '555-010-0100');
     raise exception 'FAIL: bad phone accepted';
   exception when others then if sqlerrm like 'FAIL:%' then raise; end if; end;
   begin
-    perform public.complete_setup('FAKE-ONE', 'Fake Name', date '1990-01-01', null, 'None', 'Fake Contact', '', '555 010 0100');
+    perform public.complete_setup('FAKE-ONE', 'Fake Name', date '1990-01-01', null, 'None', 'Fake Contact', '', '555-010-0100');
     raise exception 'FAIL: missing relationship accepted';
   exception when others then if sqlerrm like 'FAIL:%' then raise; end if; end;
 
@@ -250,27 +250,27 @@ begin
     raise exception 'FAIL: client set setup_complete';
   exception when others then if sqlerrm like 'FAIL:%' then raise; end if; end;
 
-  perform public.complete_setup('Fake-One', 'Fake Legal Name', date '1990-01-01', null, 'None', 'Fake Contact', 'Friend', '555 010 0100');
+  perform public.complete_setup('Fake-One', 'Fake Legal Name', date '1990-01-01', null, 'None', 'Fake Contact', 'Friend', '555-010-0100');
 
   select count(*) into n from public.profiles where id = v_new and setup_complete and callsign = 'Fake-One';
   if n <> 1 then raise exception 'FAIL: setup did not complete'; end if;
-  select count(*) into n from public.member_private where profile_id = v_new and phone is null and allergies = 'None';
+  select count(*) into n from public.member_private where profile_id = v_new and phone is null and allergies = 'NKA';
   if n <> 1 then raise exception 'FAIL: own private row not readable/correct'; end if;
 
   begin
-    perform public.complete_setup('Fake-One', 'Fake Legal Name', date '1990-01-01', null, 'None', 'Fake Contact', 'Friend', '555 010 0100');
+    perform public.complete_setup('Fake-One', 'Fake Legal Name', date '1990-01-01', null, 'None', 'Fake Contact', 'Friend', '555-010-0100');
     raise exception 'FAIL: setup ran twice';
   exception when others then if sqlerrm like 'FAIL:%' then raise; end if; end;
 
   -- Owner can correct their own row.
-  update public.member_private set phone = '555 010 0199' where profile_id = v_new;
+  update public.member_private set phone = '555-010-0199' where profile_id = v_new;
 
   -- Owner cannot write someone else's row, nor insert a row for someone else.
-  update public.member_private set phone = '555 010 0000' where profile_id <> v_new;
+  update public.member_private set phone = '555-010-0000' where profile_id <> v_new;
   begin
     insert into public.member_private
       (profile_id, legal_name, dob, allergies, emergency_name, emergency_relationship, emergency_phone)
-    values (v_mem, 'Fake', date '1990-01-01', 'None', 'Fake', 'Friend', '555 010 0100');
+    values (v_mem, 'Fake', date '1990-01-01', 'None', 'Fake', 'Friend', '555-010-0100');
     raise exception 'FAIL: wrote private data for another profile';
   exception when others then if sqlerrm like 'FAIL:%' then raise; end if; end;
 
@@ -279,10 +279,10 @@ begin
   perform set_config('request.jwt.claims', json_build_object('sub', v_other, 'role', 'authenticated')::text, true);
   set local role authenticated;
   begin
-    perform public.complete_setup('FAKE-ONE', 'Fake Other', date '1991-02-03', null, 'None', 'Fake Contact', 'Friend', '555 010 0101');
+    perform public.complete_setup('FAKE-ONE', 'Fake Other', date '1991-02-03', null, 'None', 'Fake Contact', 'Friend', '555-010-0101');
     raise exception 'FAIL: duplicate callsign accepted';
   exception when others then if sqlerrm like 'FAIL:%' then raise; end if; if sqlerrm <> 'callsign_taken' then raise exception 'FAIL: wrong error %', sqlerrm; end if; end;
-  perform public.complete_setup('Fake-Two', 'Fake Other', date '1991-02-03', '555 010 0102', 'Fake allergy', 'Fake Contact', 'Sibling', '555 010 0101');
+  perform public.complete_setup('Fake-Two', 'Fake Other', date '1991-02-03', '555-010-0102', 'Fake allergy', 'Fake Contact', 'Sibling', '555-010-0101');
 
   -- Other user cannot see the first user's private row.
   select count(*) into n from public.member_private where profile_id = v_new;
@@ -306,7 +306,7 @@ begin
   select count(*) into n from public.member_private; if n <> 2 then raise exception 'FAIL: command should read 2 private rows (got %)', n; end if;
 
   -- Command cannot edit another member's private row.
-  update public.member_private set phone = '555 010 0000' where profile_id = v_new;
+  update public.member_private set phone = '555-010-0000' where profile_id = v_new;
   get diagnostics n = row_count;
   if n <> 0 then raise exception 'FAIL: command edited another member''s private row'; end if;
 
@@ -344,7 +344,7 @@ begin
   perform set_config('request.jwt.claims', json_build_object('sub', v_other, 'role', 'authenticated')::text, true);
   set local role authenticated;
   begin
-    perform public.complete_setup('Fake-Three', 'Fake', date '1990-01-01', null, 'None', 'Fake', 'Friend', '555 010 0100');
+    perform public.complete_setup('Fake-Three', 'Fake', date '1990-01-01', null, 'None', 'Fake', 'Friend', '555-010-0100');
     raise exception 'FAIL: suspended user ran setup';
   exception when others then if sqlerrm like 'FAIL:%' then raise; end if; end;
 

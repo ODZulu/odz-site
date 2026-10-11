@@ -21,7 +21,7 @@ const good: SetupValues = {
   allergies: 'None',
   emergencyName: 'Sample Contact',
   emergencyRelationship: 'Friend',
-  emergencyPhone: '555 010 0100',
+  emergencyPhone: '555-010-0100',
 }
 
 describe('invite codes', () => {

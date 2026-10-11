@@ -11,6 +11,7 @@ import {
   type OwnProfileErrors,
   type OwnProfileValues,
 } from '../lib/roster'
+import { formatPhoneInput, normalizeAllergies, normalizePhone } from '../lib/phone'
 import { supabase } from '../lib/supabase'
 import { setupErrorField, validatePrivate, type PrivateErrors, type PrivateValues } from '../lib/validate'
 import { useLoad } from '../lib/useLoad'
@@ -153,6 +154,13 @@ function PrivateDetails({ uid }: { uid: string | undefined }) {
     error: errors[k],
   })
 
+  const bindPhone = (k: 'phone' | 'emergencyPhone') => ({
+    ...bind(k),
+    onChange: (e: { target: { value: string } }) => setV((cur) => ({ ...cur, [k]: formatPhoneInput(e.target.value) })),
+    inputMode: 'tel' as const,
+    placeholder: '555-010-0100',
+  })
+
   async function save(e: FormEvent) {
     e.preventDefault()
     setSaved(false)
@@ -163,11 +171,11 @@ function PrivateDetails({ uid }: { uid: string | undefined }) {
     const { error } = await supabase.rpc('update_own_private', {
       p_legal_name: v.legalName.trim(),
       p_dob: v.dob,
-      p_phone: v.phone.trim() || null,
-      p_allergies: v.allergies.trim(),
+      p_phone: normalizePhone(v.phone),
+      p_allergies: normalizeAllergies(v.allergies),
       p_emergency_name: v.emergencyName.trim(),
       p_emergency_relationship: v.emergencyRelationship.trim(),
-      p_emergency_phone: v.emergencyPhone.trim(),
+      p_emergency_phone: normalizePhone(v.emergencyPhone) ?? '',
     })
     setBusy(false)
     if (error) {
@@ -198,11 +206,11 @@ function PrivateDetails({ uid }: { uid: string | undefined }) {
         <form onSubmit={save} noValidate style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <Field label="Full legal name" autoComplete="off" {...bind('legalName')} />
           <Field label="Date of birth" type="date" autoComplete="off" {...bind('dob')} />
-          <Field label="Mobile phone (optional)" type="tel" autoComplete="off" {...bind('phone')} />
-          <Field label="Allergies" autoComplete="off" hint='Allergies only. Write "None" if you have none.' {...bind('allergies')} />
+          <Field label="Mobile phone (optional)" type="tel" autoComplete="off" {...bindPhone('phone')} />
+          <Field label="Allergies" autoComplete="off" hint="Allergies only. Enter NKA if none (No Known Allergies)." placeholder="NKA" {...bind('allergies')} />
           <Field label="Emergency contact name" autoComplete="off" {...bind('emergencyName')} />
           <Field label="Emergency contact relationship" autoComplete="off" {...bind('emergencyRelationship')} />
-          <Field label="Emergency contact phone" type="tel" autoComplete="off" {...bind('emergencyPhone')} />
+          <Field label="Emergency contact phone" type="tel" autoComplete="off" {...bindPhone('emergencyPhone')} />
           {errors.form && (
             <p role="alert" style={{ color: 'var(--alert)' }}>
               {errors.form}

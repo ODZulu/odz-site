@@ -131,11 +131,11 @@ async function setupDone(id: string, callsign: string): Promise<void> {
     profile_id: id,
     legal_name: 'E2E Fake Person',
     dob: '2000-01-01',
-    phone: '555 0100',
+    phone: '555-010-0100',
     allergies: 'None',
     emergency_name: 'E2E Fake Contact',
     emergency_relationship: 'Friend',
-    emergency_phone: '555 0101',
+    emergency_phone: '555-010-0101',
   })
   if (priv.error) throw new Error('could not seed private row')
   const prof = await a.from('profiles').update({ callsign, setup_complete: true }).eq('id', id)

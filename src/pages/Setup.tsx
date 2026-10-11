@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useAuth } from '../auth/AuthProvider'
 import { Button, Field, Panel } from '../components'
+import { formatPhoneInput, normalizeAllergies, normalizePhone } from '../lib/phone'
 import { supabase } from '../lib/supabase'
 import { setupErrorField, validateSetup, type SetupErrors, type SetupValues } from '../lib/validate'
 
@@ -34,6 +35,13 @@ export default function Setup() {
     error: errors[k],
   })
 
+  const bindPhone = (k: 'phone' | 'emergencyPhone') => ({
+    ...bind(k),
+    onChange: (e: { target: { value: string } }) => setV((cur) => ({ ...cur, [k]: formatPhoneInput(e.target.value) })),
+    inputMode: 'tel' as const,
+    placeholder: '555-010-0100',
+  })
+
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
     if (!supabase) return
@@ -44,11 +52,11 @@ export default function Setup() {
       p_callsign: v.callsign.trim(),
       p_legal_name: v.legalName.trim(),
       p_dob: v.dob,
-      p_phone: v.phone.trim() || null,
-      p_allergies: v.allergies.trim(),
+      p_phone: normalizePhone(v.phone),
+      p_allergies: normalizeAllergies(v.allergies),
       p_emergency_name: v.emergencyName.trim(),
       p_emergency_relationship: v.emergencyRelationship.trim(),
-      p_emergency_phone: v.emergencyPhone.trim(),
+      p_emergency_phone: normalizePhone(v.emergencyPhone) ?? '',
     })
     if (!error) {
       await refreshProfile() // the gate then moves the account on
@@ -83,16 +91,17 @@ export default function Setup() {
         <Field label="Callsign" autoComplete="off" hint="Your handle. 2 to 24 characters." {...bind('callsign')} />
         <Field label="Full legal name" autoComplete="name" {...bind('legalName')} />
         <Field label="Date of birth" type="date" max={max} autoComplete="bday" {...bind('dob')} />
-        <Field label="Mobile phone (optional)" type="tel" autoComplete="tel" {...bind('phone')} />
+        <Field label="Mobile phone (optional)" type="tel" autoComplete="tel" {...bindPhone('phone')} />
         <Field
           label="Allergies"
           autoComplete="off"
-          hint='Allergies only, no other medical information. Write "None" if you have none.'
+          hint="Allergies only. Enter NKA if none (No Known Allergies)."
+          placeholder="NKA"
           {...bind('allergies')}
         />
         <Field label="Emergency contact name" autoComplete="off" {...bind('emergencyName')} />
         <Field label="Emergency contact relationship" autoComplete="off" {...bind('emergencyRelationship')} />
-        <Field label="Emergency contact phone" type="tel" autoComplete="off" {...bind('emergencyPhone')} />
+        <Field label="Emergency contact phone" type="tel" autoComplete="off" {...bindPhone('emergencyPhone')} />
         {errors.form && (
           <p role="alert" style={{ color: 'var(--alert)' }}>
             {errors.form}

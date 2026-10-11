@@ -247,7 +247,7 @@ begin
   reset role;
   perform set_config('request.jwt.claims', '', true);
   insert into public.member_private (profile_id, legal_name, dob, allergies, emergency_name, emergency_relationship, emergency_phone)
-  values (v_mem, 'Fake Legal Value', date '1991-02-03', 'Fake Allergy Value', 'Fake Contact Value', 'Friend', '555 010 0100');
+  values (v_mem, 'Fake Legal Value', date '1991-02-03', 'Fake Allergy Value', 'Fake Contact Value', 'Friend', '555-010-0100');
   perform set_config('request.jwt.claims', json_build_object('sub', v_cmd, 'role', 'authenticated')::text, true);
   set local role authenticated;
   select count(*) into n from public.list_audit(100, 0) a

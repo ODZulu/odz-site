@@ -34,7 +34,7 @@ begin
   update public.profiles set status = 'approved', is_admin = true, setup_complete = true, callsign = 'Fake-Adm' where id = v_adm;
   update public.profiles set setup_complete = true, callsign = 'Fake-Pend' where id = v_pend;
   insert into public.member_private (profile_id, legal_name, dob, allergies, emergency_name, emergency_relationship, emergency_phone)
-  values (v_mem, 'Fake Legal Name', date '1990-01-02', 'Fake allergy', 'Fake Contact', 'Friend', '555 010 0100');
+  values (v_mem, 'Fake Legal Name', date '1990-01-02', 'Fake allergy', 'Fake Contact', 'Friend', '555-010-0100');
 
   ------------------------------------------------------------------ joined_at
   select joined_at into j from public.profiles where id = v_mem;
@@ -82,12 +82,12 @@ begin
   if n <> 0 then raise exception 'FAIL: member read another private row'; end if;
 
   -- Own private details: validated, fixed errors, no values echoed.
-  perform public.update_own_private('Fake Legal Two', date '1990-01-03', '555 010 0111', 'None', 'Fake Contact B', 'Sibling', '555 010 0112');
-  select count(*) into n from public.member_private where profile_id = v_mem and legal_name = 'Fake Legal Two' and phone = '555 010 0111';
+  perform public.update_own_private('Fake Legal Two', date '1990-01-03', '555-010-0111', 'None', 'Fake Contact B', 'Sibling', '555-010-0112');
+  select count(*) into n from public.member_private where profile_id = v_mem and legal_name = 'Fake Legal Two' and phone = '555-010-0111';
   if n <> 1 then raise exception 'FAIL: own private details not updated'; end if;
-  begin perform public.update_own_private('Fake', current_date + 1, null, 'None', 'Fake', 'Friend', '555 010 0100'); raise exception 'FAIL: future dob accepted';
+  begin perform public.update_own_private('Fake', current_date + 1, null, 'None', 'Fake', 'Friend', '555-010-0100'); raise exception 'FAIL: future dob accepted';
   exception when others then if sqlerrm like 'FAIL:%' then raise; end if; if sqlerrm <> 'invalid_dob' then raise exception 'FAIL: wrong error %', sqlerrm; end if; end;
-  begin perform public.update_own_private('Fake', date '1990-01-01', null, '', 'Fake', 'Friend', '555 010 0100'); raise exception 'FAIL: blank allergies accepted';
+  begin perform public.update_own_private('Fake', date '1990-01-01', null, '', 'Fake', 'Friend', '555-010-0100'); raise exception 'FAIL: blank allergies accepted';
   exception when others then if sqlerrm like 'FAIL:%' then raise; end if; end;
   begin perform public.update_own_private('Fake', date '1990-01-01', null, 'None', 'Fake', 'Friend', 'abc'); raise exception 'FAIL: bad emergency phone accepted';
   exception when others then if sqlerrm like 'FAIL:%' then raise; end if; end;
@@ -129,10 +129,10 @@ begin
   -- Command reads private details of others (read-only: they cannot edit).
   select count(*) into n from public.member_private where profile_id = v_mem;
   if n <> 1 then raise exception 'FAIL: command cannot read private details'; end if;
-  update public.member_private set phone = '555 010 9999' where profile_id = v_mem;
+  update public.member_private set phone = '555-010-9999' where profile_id = v_mem;
   get diagnostics n = row_count;
   if n <> 0 then raise exception 'FAIL: command edited private details'; end if;
-  begin perform public.update_own_private('Fake', date '1990-01-01', null, 'None', 'Fake', 'Friend', '555 010 0100');
+  begin perform public.update_own_private('Fake', date '1990-01-01', null, 'None', 'Fake', 'Friend', '555-010-0100');
     raise exception 'FAIL: update_own_private worked without a private row';
   exception when others then if sqlerrm like 'FAIL:%' then raise; end if; end;
   reset role;

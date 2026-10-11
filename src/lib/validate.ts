@@ -3,10 +3,13 @@
  * so the form can say what is wrong; the database is the control. Messages never echo the value.
  */
 
+import { validatePhone } from './phone'
+
 export const PASSWORD_MIN = 12
 
+export { validatePhone }
+
 const CALLSIGN = /^[A-Za-z0-9 _-]{2,24}$/
-const PHONE = /^\+?[0-9 ().-]{7,20}$/
 
 /** Lowercase letters and digits only, so case, spaces and dashes in a typed or pasted code do not matter. */
 export function normalizeInviteCode(input: string): string {
@@ -48,13 +51,6 @@ export function validateDob(value: string, today: Date = new Date()): string | n
   return null
 }
 
-export function validatePhone(value: string, required: boolean): string | null {
-  const v = value.trim()
-  if (v === '') return required ? 'Enter a phone number.' : null
-  const digits = v.replace(/\D/g, '').length
-  return PHONE.test(v) && digits >= 7 && digits <= 15 ? null : 'Enter a valid phone number.'
-}
-
 export function validateRequired(value: string, label: string, max: number): string | null {
   const v = value.trim()
   if (v === '') return `${label} is required.`
@@ -85,7 +81,7 @@ export function validatePrivate(v: PrivateValues, today: Date = new Date()): Pri
   set('legalName', validateRequired(v.legalName, 'Full legal name', 100))
   set('dob', validateDob(v.dob, today))
   set('phone', validatePhone(v.phone, false))
-  set('allergies', validateRequired(v.allergies, 'Allergies (write "None" if none)', 500))
+  set('allergies', validateRequired(v.allergies, 'Allergies (enter NKA if none)', 500))
   set('emergencyName', validateRequired(v.emergencyName, 'Emergency contact name', 100))
   set('emergencyRelationship', validateRequired(v.emergencyRelationship, 'Relationship', 50))
   set('emergencyPhone', validatePhone(v.emergencyPhone, true))

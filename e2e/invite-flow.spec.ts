@@ -49,7 +49,7 @@ test('valid invite: join, account setup, then the pending screen', async ({ page
   await page.getByLabel('Allergies', { exact: true }).fill('None')
   await page.getByLabel('Emergency contact name').fill('E2E Fake Contact')
   await page.getByLabel('Emergency contact relationship').fill('Friend')
-  await page.getByLabel('Emergency contact phone').fill('555 0101')
+  await page.getByLabel('Emergency contact phone').fill('(555) 010-0101')
   await page.getByRole('button', { name: 'Save and continue' }).click()
 
   await expect(page).toHaveURL(/\/pending$/)
