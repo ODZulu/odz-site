@@ -9,3 +9,6 @@ dev-dist
 *.log
 .claude/settings.local.json
 *.tsbuildinfo
+playwright-report/
+test-results/
+.env.e2e

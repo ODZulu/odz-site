@@ -52,11 +52,13 @@ export default function Login() {
             <Button type="submit" disabled={busy} block>
               {busy ? 'Signing in' : 'Sign in'}
             </Button>
-            <p className="odz-muted">Locked out? Contact Command.</p>
           </form>
         ) : (
           <p className="odz-muted">Sign-in is not configured for this build.</p>
         )}
+        <p className="odz-muted" style={{ marginTop: '1rem' }}>
+          Locked out? Contact Command.
+        </p>
       </Panel>
     </PublicOnly>
   )
