@@ -37,10 +37,13 @@ jobs:
       - name: Start local Supabase (applies supabase/migrations in order)
         run: supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor
       - name: SQL tests (Tier 1 database tests on the clean local database)
+        # psql, not `supabase db query`: the test files are multi-statement scripts.
+        # Port 54322 is [db].port in supabase/config.toml. Stops at the first failing file.
         run: |
+          set -e
           for f in supabase/tests/*.test.sql; do
             echo "== $f"
-            supabase db query --local -f "$f"
+            psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -f "$f"
           done
       - name: Export local keys (masked)
         run: |
