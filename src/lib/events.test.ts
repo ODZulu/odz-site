@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 // The events module imports the Supabase client; keep these tests independent of local env files.
 vi.mock('./supabase', () => ({ supabase: null, isSupabaseConfigured: false }))
 
-import { emptyEventForm, groupByDay, isPast, splitUpcoming, toRow, validateEventForm, type EventForm } from './events'
+import { emptyEventForm, flattenDetails, groupByDay, isPast, splitUpcoming, toSaveArgs, validateEventForm, type EventForm } from './events'
 
 const good: EventForm = {
   ...emptyEventForm,
@@ -28,13 +28,29 @@ describe('validateEventForm', () => {
   })
 })
 
-describe('toRow', () => {
+describe('toSaveArgs', () => {
   it('converts Phoenix wall-clock input to UTC and trims', () => {
-    const row = toRow({ ...good, title: '  Fake Training ', location_name: ' ' })
-    expect(row.starts_at).toBe('2026-10-17T13:30:00.000Z')
-    expect(row.ends_at).toBe('2026-10-17T17:00:00.000Z')
-    expect(row.title).toBe('Fake Training')
-    expect(row.location_name).toBeNull()
+    const a = toSaveArgs(null, { ...good, title: '  Fake Training ', location_name: ' ' })
+    expect(a.p_id).toBeNull()
+    expect(a.p_starts_at).toBe('2026-10-17T13:30:00.000Z')
+    expect(a.p_ends_at).toBe('2026-10-17T17:00:00.000Z')
+    expect(a.p_title).toBe('Fake Training')
+    expect(a.p_location_name).toBeNull()
+  })
+  it('carries the id when editing', () => expect(toSaveArgs('abc', good).p_id).toBe('abc'))
+})
+
+describe('flattenDetails', () => {
+  const base = { id: '1', title: 'Fake', event_type: 'Other' as const, starts_at: '2026-10-17T13:30:00.000Z', ends_at: null, status: 'scheduled' as const }
+  it('lifts the details row onto the event', () => {
+    const [e] = flattenDetails([{ ...base, event_details: { location_name: 'Fake Field', location_detail: null, description: 'x' } }])
+    expect(e.location_name).toBe('Fake Field')
+    expect(e.description).toBe('x')
+    expect('event_details' in e).toBe(false)
+  })
+  it('gives nulls when the caller cannot read details', () => {
+    const [e] = flattenDetails([{ ...base, event_details: null }])
+    expect([e.location_name, e.location_detail, e.description]).toEqual([null, null, null])
   })
 })
 

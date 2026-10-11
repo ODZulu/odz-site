@@ -34,8 +34,10 @@ test('anonymous visitors get titles and times, and no location or description ov
   })
   await page.goto('/calendar')
   await expect(page.getByText(ev.title)).toBeVisible()
-  expect(urls.some((u) => u.includes('/rest/v1/public_events'))).toBe(true)
-  expect(urls.some((u) => /\/rest\/v1\/events\b/.test(u))).toBe(false)
+  expect(urls.some((u) => /\/rest\/v1\/events\?/.test(u))).toBe(true)
+  // Logged out, the page never asks for the details table or the detail columns.
+  expect(urls.some((u) => u.includes('event_details'))).toBe(false)
+  expect(urls.some((u) => /location_|description/.test(decodeURIComponent(u)))).toBe(false)
   const all = bodies.join('\n') + (await page.locator('body').innerText())
   for (const secret of [SECRET_LOCATION, SECRET_DETAIL, SECRET_DESCRIPTION]) expect(all).not.toContain(secret)
 })

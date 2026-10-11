@@ -36,7 +36,7 @@ npm run db:push        # apply, in order
 
 **All migrations are applied only with `db push` from this repo**, never through the dashboard SQL editor or an MCP/connector. Those record their own timestamps, so local and remote history diverge (this happened once on dev and was fixed with `supabase migration repair`). Prod starts clean this way. Dax runs the prod push in his own terminal after reviewing the dry run.
 
-`supabase/migrations/` is the whole schema: tiers, capabilities, profiles, invites, private data, events, minutes, documents, HQ tables, notifications and the private `minutes` storage bucket. Later migrations are pushed one at a time, in order, after the initial push (the `public_events` fix and MVA-207's phone/NKA are separate pushes). Tiers and capabilities are seeded by the migrations; **no test or sample data goes to prod**.
+`supabase/migrations/` is the whole schema: tiers, capabilities, profiles, invites, private data, events, minutes, documents, HQ tables, notifications and the private `minutes` storage bucket. Later migrations are pushed one at a time, in order, after the initial push (MVA-207's phone/NKA and the event data model split are separate pushes). Tiers and capabilities are seeded by the migrations; **no test or sample data goes to prod**.
 
 Run the SQL tests against a prod-shaped clone (a branch or the dev project), never prod: `supabase/tests/*.test.sql` (see docs/TESTING.md).
 
