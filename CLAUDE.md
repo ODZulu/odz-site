@@ -41,8 +41,8 @@ Every comment opens with **@opr** (plain bold text, not a real mention). Cite ti
 Tier 1: Vitest in CI on every push. Tier 2: Playwright (docs/TESTING.md), CI on pull requests to `dev` against a local Supabase stack. Tier 3: Dax on a physical Android phone, installed PWA.
 
 ## Version tracking
-- App version: 0.0.1
-- Schema version: 10 migrations in supabase/migrations (see its README)
+- App version: 0.1.0 (release candidate; GO pending on MVA-206)
+- Schema version: 12 migrations in supabase/migrations (see its README)
 - Last GO build: none
 - Active branch: dev
 
