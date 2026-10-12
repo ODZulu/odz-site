@@ -50,8 +50,9 @@ begin
   if n <> 0 then raise exception 'FAIL: recruit and pending must not be recipients'; end if;
 
   ------------------------------------------------------------------ new event -> 'new' notifications
-  insert into public.events (title, starts_at, location_name, location_detail, description)
-  values ('Fake Op', s1, 'Fake Secret Spot', 'Fake secret directions', 'Fake secret description') returning id into ev;
+  insert into public.events (title, starts_at) values ('Fake Op', s1) returning id into ev;
+  insert into public.event_details (event_id, location_name, location_detail, description)
+  values (ev, 'Fake Secret Spot', 'Fake secret directions', 'Fake secret description');
   select count(*) into n from public.notifications where kind = 'new' and title = 'Fake Op';
   if n <> 3 then raise exception 'FAIL: new event should notify the 3 recipients (got %)', n; end if;
   select count(*) into n from public.notifications where body !~ ('Starts ' || public.phoenix_stamp(s1)) and kind = 'new';

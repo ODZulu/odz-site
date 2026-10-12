@@ -10,7 +10,7 @@ export const EVENT_TYPES = ['Game Day', 'Op', 'Training', 'Meeting', 'Other'] as
 export type EventType = (typeof EVENT_TYPES)[number]
 export type EventStatus = 'scheduled' | 'cancelled'
 
-/** What the public may see: that an event exists. No location, no description. */
+/** What anyone may see (the `events` table): that an event exists. No location, no description. */
 export type PublicEvent = {
   id: string
   title: string
@@ -20,7 +20,7 @@ export type PublicEvent = {
   status: EventStatus
 }
 
-/** Members with read_event_details. */
+/** Members with read_event_details also get the `event_details` row (location, directions, description). */
 export type EventDetails = PublicEvent & {
   location_name: string | null
   location_detail: string | null
@@ -67,15 +67,17 @@ export function validateEventForm(f: EventForm): EventErrors {
   return e
 }
 
-export function toRow(f: EventForm) {
+/** The arguments of the save_event() RPC: the event and its details, saved together. */
+export function toSaveArgs(id: string | null, f: EventForm) {
   return {
-    title: f.title.trim(),
-    event_type: f.event_type,
-    starts_at: fromLocalInput(f.starts) as string,
-    ends_at: f.ends ? fromLocalInput(f.ends) : null,
-    location_name: f.location_name.trim() || null,
-    location_detail: f.location_detail.trim() || null,
-    description: f.description.trim() || null,
+    p_id: id,
+    p_title: f.title.trim(),
+    p_event_type: f.event_type,
+    p_starts_at: fromLocalInput(f.starts) as string,
+    p_ends_at: f.ends ? fromLocalInput(f.ends) : null,
+    p_location_name: f.location_name.trim() || null,
+    p_location_detail: f.location_detail.trim() || null,
+    p_description: f.description.trim() || null,
   }
 }
 
@@ -110,32 +112,46 @@ export function groupByDay<T extends Pick<PublicEvent, 'starts_at'>>(events: T[]
 export async function listPublicEvents(): Promise<PublicEvent[]> {
   if (!supabase) return []
   const { data, error } = await supabase
-    .from('public_events')
+    .from('events')
     .select('id,title,event_type,starts_at,ends_at,status')
     .order('starts_at')
   if (error) throw new Error('events')
   return data as PublicEvent[]
 }
 
+type EventWithDetails = PublicEvent & {
+  event_details: { location_name: string | null; location_detail: string | null; description: string | null } | null
+}
+
+/** Joins each event to its details row; a caller without read_event_details gets null details. */
+export function flattenDetails(rows: EventWithDetails[]): EventDetails[] {
+  return rows.map(({ event_details: d, ...e }) => ({
+    ...e,
+    location_name: d?.location_name ?? null,
+    location_detail: d?.location_detail ?? null,
+    description: d?.description ?? null,
+  }))
+}
+
 export async function listEvents(): Promise<EventDetails[]> {
   if (!supabase) return []
   const { data, error } = await supabase
     .from('events')
-    .select('id,title,event_type,starts_at,ends_at,status,location_name,location_detail,description')
+    .select('id,title,event_type,starts_at,ends_at,status,event_details(location_name,location_detail,description)')
     .order('starts_at')
   if (error) throw new Error('events')
-  return data as EventDetails[]
+  return flattenDetails(data as unknown as EventWithDetails[])
 }
 
 export async function createEvent(form: EventForm): Promise<void> {
   if (!supabase) throw new Error('events')
-  const { error } = await supabase.from('events').insert(toRow(form))
+  const { error } = await supabase.rpc('save_event', toSaveArgs(null, form))
   if (error) throw new Error('events')
 }
 
 export async function updateEvent(id: string, form: EventForm): Promise<void> {
   if (!supabase) throw new Error('events')
-  const { error } = await supabase.from('events').update(toRow(form)).eq('id', id)
+  const { error } = await supabase.rpc('save_event', toSaveArgs(id, form))
   if (error) throw new Error('events')
 }
 

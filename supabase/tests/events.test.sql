@@ -10,6 +10,7 @@ declare
   v_rec  uuid := '00000000-0000-0000-0000-0000000000f1';
   t_cmd uuid; t_og uuid; t_mem uuid; t_recruit uuid;
   ev uuid;
+  ev2 uuid;
   n integer;
 begin
   select id into t_cmd from public.tiers where name = 'Command';
@@ -40,10 +41,11 @@ begin
   perform set_config('request.jwt.claims', json_build_object('sub', v_cmd, 'role', 'authenticated')::text, true);
   set local role authenticated;
 
-  insert into public.events (title, event_type, starts_at, ends_at, location_name, location_detail, description)
-  values ('  Fake Game Day  ', 'Game Day', now() + interval '3 days', now() + interval '3 days 4 hours',
-          'Fake Field', 'Fake directions: gate 2', '# Fake brief' || chr(10) || 'bring water')
+  insert into public.events (title, event_type, starts_at, ends_at)
+  values ('  Fake Game Day  ', 'Game Day', now() + interval '3 days', now() + interval '3 days 4 hours')
   returning id into ev;
+  insert into public.event_details (event_id, location_name, location_detail, description)
+  values (ev, 'Fake Field', 'Fake directions: gate 2', '# Fake brief' || chr(10) || 'bring water');
 
   select count(*) into n from public.events where id = ev and title = 'Fake Game Day' and created_by = v_cmd and status = 'scheduled';
   if n <> 1 then raise exception 'FAIL: event not created as expected'; end if;
@@ -66,7 +68,7 @@ begin
   exception when others then if sqlerrm like 'FAIL:%' then raise; end if; end;
 
   -- Edit, move, cancel, reinstate.
-  update public.events set location_name = 'Fake Field B' where id = ev;
+  update public.event_details set location_name = 'Fake Field B' where event_id = ev;
   update public.events set starts_at = now() + interval '4 days', ends_at = now() + interval '4 days 2 hours' where id = ev;
   update public.events set status = 'cancelled' where id = ev;
   update public.events set status = 'scheduled' where id = ev;
@@ -84,8 +86,19 @@ begin
   reset role;
   perform set_config('request.jwt.claims', json_build_object('sub', v_mem, 'role', 'authenticated')::text, true);
   set local role authenticated;
-  select count(*) into n from public.events where location_detail is not null;
+  select count(*) into n from public.event_details where location_detail is not null;
   if n <> 1 then raise exception 'FAIL: member should read event details'; end if;
+  select count(*) into n from public.events where id = ev;
+  if n <> 1 then raise exception 'FAIL: member should read the listing'; end if;
+  begin insert into public.event_details (event_id, location_name) values (ev, 'Hacked');
+    raise exception 'FAIL: member wrote event details';
+  exception when others then if sqlerrm like 'FAIL:%' then raise; end if; end;
+  update public.event_details set location_name = 'Hacked' where event_id = ev;
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'FAIL: member edited event details'; end if;
+  begin perform public.save_event(ev, 'Hacked', 'Other', now() + interval '1 day', null, null, null, null);
+    raise exception 'FAIL: member saved an event through save_event';
+  exception when others then if sqlerrm like 'FAIL:%' then raise; end if; end;
   begin insert into public.events (title, starts_at) values ('Fake member', now());
     raise exception 'FAIL: member created an event';
   exception when others then if sqlerrm like 'FAIL:%' then raise; end if; end;
@@ -96,28 +109,67 @@ begin
   get diagnostics n = row_count;
   if n <> 0 then raise exception 'FAIL: member deleted an event'; end if;
 
-  ------------------------------------------------------------------ Recruit reads only the public view
+  ------------------------------------------------------------------ Recruit reads the listing, never the details
   reset role;
   perform set_config('request.jwt.claims', json_build_object('sub', v_rec, 'role', 'authenticated')::text, true);
   set local role authenticated;
-  select count(*) into n from public.events;
-  if n <> 0 then raise exception 'FAIL: recruit read event details'; end if;
-  select count(*) into n from public.public_events where title = 'Fake Game Day' and status = 'cancelled';
+  select count(*) into n from public.events where title = 'Fake Game Day' and status = 'cancelled';
   if n <> 1 then raise exception 'FAIL: recruit should see the public listing, cancelled included'; end if;
-
-  ------------------------------------------------------------------ anon: view only
+  select count(*) into n from public.event_details;
+  if n <> 0 then raise exception 'FAIL: recruit read event details'; end if;
+  select count(*) into n from public.events e join public.event_details d on d.event_id = e.id;
+  if n <> 0 then raise exception 'FAIL: recruit joined event details'; end if;
+  begin insert into public.event_details (event_id, location_name) values (ev, 'x');
+    raise exception 'FAIL: recruit wrote event details';
+  exception when others then if sqlerrm like 'FAIL:%' then raise; end if; end;
   reset role;
+
+  ------------------------------------------------------------------ anon: the listing columns only
   perform set_config('request.jwt.claims', '{"role":"anon"}', true);
   set local role anon;
-  select count(*) into n from public.public_events;
+  select count(*) into n from public.events;
   if n <> 1 then raise exception 'FAIL: anon should see the public listing'; end if;
-  begin perform 1 from public.events; raise exception 'FAIL: anon read events';
-  exception when others then if sqlerrm like 'FAIL:%' then raise; end if; end;
-  begin perform location_name from public.public_events; raise exception 'FAIL: public view exposes location';
-  exception when others then if sqlerrm like 'FAIL:%' then raise; end if; end;
-  begin perform description from public.public_events; raise exception 'FAIL: public view exposes description';
-  exception when others then if sqlerrm like 'FAIL:%' then raise; end if; end;
+  select count(*) into n from (select id, title, event_type, starts_at, ends_at, status from public.events) x;
+  if n <> 1 then raise exception 'FAIL: anon cannot read the listing columns'; end if;
+  begin perform created_by from public.events; raise exception 'FAIL: anon read created_by';
+  exception when insufficient_privilege then null; end;
+  begin perform external_id from public.events; raise exception 'FAIL: anon read external_id';
+  exception when insufficient_privilege then null; end;
+  begin perform * from public.events; raise exception 'FAIL: anon select * on events';
+  exception when insufficient_privilege then null; end;
+  begin perform 1 from public.event_details; raise exception 'FAIL: anon read event_details';
+  exception when insufficient_privilege then null; end;
+  begin perform location_detail from public.events; raise exception 'FAIL: location_detail still on events';
+  exception when undefined_column then null; end;
+  begin perform 1 from public.public_events; raise exception 'FAIL: public_events view still exists';
+  exception when undefined_table then null; end;
   begin insert into public.events (title, starts_at) values ('Fake anon', now()); raise exception 'FAIL: anon created an event';
+  exception when others then if sqlerrm like 'FAIL:%' then raise; end if; end;
+  begin insert into public.event_details (event_id, location_name) values (ev, 'x'); raise exception 'FAIL: anon wrote event details';
+  exception when others then if sqlerrm like 'FAIL:%' then raise; end if; end;
+  reset role;
+
+  ------------------------------------------------------------------ save_event: both tables, one audit row
+  perform set_config('request.jwt.claims', json_build_object('sub', v_cmd, 'role', 'authenticated')::text, true);
+  set local role authenticated;
+  ev2 := public.save_event(null, 'Fake Saved', 'Training', now() + interval '5 days', null, 'Fake Spot', ' ', 'fake body');
+  select count(*) into n from public.event_details where event_id = ev2 and location_name = 'Fake Spot'
+    and location_detail is null and description = 'fake body';
+  if n <> 1 then raise exception 'FAIL: save_event did not store details (blank becomes null)'; end if;
+  perform public.save_event(ev2, 'Fake Saved Two', 'Training', now() + interval '6 days', null, 'Fake Spot B', null, 'fake body 2');
+  select count(*) into n from public.settings_audit where target = 'Fake Saved Two' and event = 'event_edited';
+  if n <> 1 then raise exception 'FAIL: saving title and details together should log one edit (got %)', n; end if;
+  select count(*) into n from public.settings_audit where detail ~* 'Fake Spot|fake body';
+  if n <> 0 then raise exception 'FAIL: audit leaked event details'; end if;
+  begin perform public.save_event(ev2, 'x', 'Training', now(), now() - interval '1 hour', null, null, null);
+    raise exception 'FAIL: save_event accepted end before start';
+  exception when others then if sqlerrm like 'FAIL:%' then raise; end if; end;
+  reset role;
+
+  -- The function is not callable by anon.
+  set local role anon;
+  begin perform public.save_event(null, 'Fake anon', 'Other', now(), null, null, null, null);
+    raise exception 'FAIL: anon called save_event';
   exception when others then if sqlerrm like 'FAIL:%' then raise; end if; end;
   reset role;
 

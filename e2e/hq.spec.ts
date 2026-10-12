@@ -42,6 +42,8 @@ test('Command posts traffic; a Member sees it, pinned first, and cannot post', a
   await page.getByLabel('Title').fill('E2E Plain notice')
   await page.getByLabel('Message').fill('Fake message one')
   await page.getByRole('button', { name: 'Post', exact: true }).click()
+  // The form clears when the first post lands; wait for it so the next fill is not wiped.
+  await expect(page.getByText('E2E Plain notice')).toBeVisible()
   await page.getByLabel('Title').fill('E2E Pinned notice')
   await page.getByLabel('Message').fill('<b>Fake</b> message two')
   await page.getByLabel('Pin to the top').check()

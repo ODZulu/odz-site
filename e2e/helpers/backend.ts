@@ -152,14 +152,20 @@ export async function createEventRow(opts2: { title?: string; location?: string;
       event_type: 'Training',
       starts_at: start.toISOString(),
       ends_at: new Date(start.getTime() + 3_600_000).toISOString(),
-      location_name: opts2.location ?? null,
-      location_detail: opts2.detail ?? null,
-      description: opts2.description ?? null,
       status: opts2.status ?? 'scheduled',
     })
     .select('id,title')
     .single()
   if (error || !data) throw new Error('could not create event')
+  if (opts2.location || opts2.detail || opts2.description) {
+    const d = await admin().from('event_details').insert({
+      event_id: data.id,
+      location_name: opts2.location ?? null,
+      location_detail: opts2.detail ?? null,
+      description: opts2.description ?? null,
+    })
+    if (d.error) throw new Error('could not create event details')
+  }
   return data as { id: string; title: string }
 }
 

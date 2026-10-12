@@ -57,6 +57,8 @@ test('an invite code is shown in full once, then only its last four characters',
 
   await page.reload()
   await expect(page.getByTestId('new-invite-code')).toHaveCount(0)
+  // The list loads after the reload; wait for the masked row before reading the page text.
+  await expect(page.getByText(`**** **** **** ${full.slice(-4)}`)).toBeVisible()
   const body = await page.locator('body').innerText()
   expect(body).not.toContain(full)
   expect(body).toContain(`**** **** **** ${full.slice(-4)}`)
@@ -66,7 +68,8 @@ test('Admin cannot strip approve_members from the only tier that has it', async 
   await signIn(page, await seedUser('admin', 'adm-lock'))
   await page.goto('/admin/tiers')
   const command = page.locator('section', { hasText: '1. Command' })
-  await command.getByLabel('approve_members').uncheck()
+  // The toggle is guarded: the box stays checked and a message appears, so click rather than uncheck().
+  await command.getByLabel('approve_members').click()
   await expect(page.getByRole('alert').first()).toContainText('at least one tier')
   await expect(command.getByLabel('approve_members')).toBeChecked()
 })
@@ -75,7 +78,8 @@ test('changing private-details access needs the typed word', async ({ page }) =>
   await signIn(page, await seedUser('admin', 'adm-priv'))
   await page.goto('/admin/tiers')
   const member = page.locator('section', { hasText: /3\. Member/ })
-  await member.getByLabel('view_member_private').check()
+  // Switching this on opens the typed confirmation; the box only changes after Confirm.
+  await member.getByLabel('view_member_private').click()
   const confirm = page.getByRole('button', { name: 'Confirm', exact: true })
   await expect(confirm).toBeDisabled()
   await page.getByLabel('Type PRIVATE').fill('private')
@@ -85,7 +89,7 @@ test('changing private-details access needs the typed word', async ({ page }) =>
   await confirm.click()
   await expect(member.getByLabel('view_member_private')).toBeChecked()
   // Put it back so the run leaves the stack as it found it.
-  await member.getByLabel('view_member_private').uncheck()
+  await member.getByLabel('view_member_private').click()
   await page.getByLabel('Type PRIVATE').fill('PRIVATE')
   await page.getByRole('button', { name: 'Confirm', exact: true }).click()
   await expect(member.getByLabel('view_member_private')).not.toBeChecked()
