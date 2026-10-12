@@ -1,0 +1,17 @@
+node_modules
+dist
+dev-dist
+*.local
+.env*.local
+.env
+.vercel
+.DS_Store
+*.log
+.claude/settings.local.json
+*.tsbuildinfo
+playwright-report/
+test-results/
+.env.e2e
+
+# Supabase CLI link state (project ref)
+supabase/.temp/

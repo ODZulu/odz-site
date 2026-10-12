@@ -1,0 +1,30 @@
+/* Tailwind v4: @import "tailwindcss"; then @import "./tailwind.theme.css"; Values point at tokens.css vars. */
+@theme {
+  --color-ground: var(--ground);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-deep: var(--deep);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-primary: var(--primary);
+  --color-on-primary: var(--on-primary);
+  --color-accent: var(--accent);
+  --color-on-accent: var(--on-accent);
+  --color-go: var(--go);
+  --color-pending: var(--pending);
+  --color-alert: var(--alert);
+  --color-focus: var(--focus);
+  --color-mark-navy: var(--mark-navy);
+  --color-mark-red: var(--mark-red);
+  --color-mark-gold: var(--mark-gold);
+  --color-mark-copper: var(--mark-copper);
+  --color-mark-ink: var(--mark-ink);
+  --font-display: var(--font-field-display);
+  --font-head: var(--font-field-head);
+  --font-body: var(--font-field-body);
+  --font-data: "IBM Plex Mono", ui-monospace, monospace; /* utility: font-data (avoids a self-referencing --font-mono) */
+  --radius-0: 0;
+  --radius-1: 2px;
+}

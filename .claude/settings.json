@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run dev)",
+      "Bash(npm run build)",
+      "Bash(npm test)",
+      "Bash(npx vitest run)",
+      "Bash(git status)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)"
+    ],
+    "deny": [
+      "Read(./.env.local)",
+      "Read(./.env*.local)",
+      "Bash(git push origin main:*)",
+      "Bash(git push --force:*)"
+    ]
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'Reminder: post the **@opr** completion comment on any ticket that moved (use /eos).'"
+          }
+        ]
+      }
+    ]
+  }
+}
