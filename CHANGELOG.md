@@ -12,7 +12,7 @@ First production release. Invite-only; nobody holds a code until the first Admin
 - Admin settings for tiers, capabilities and invites.
 - Events and a calendar. Anonymous visitors see title, type, time and status only. Location, directions and description sit in a separate table readable with `read_event_details`; `public_events` is gone (MVA-140).
 - RSVPs, HQ panels, minutes and documents (private storage bucket).
-- In-app notifications and Web Push. Push does not deliver in this release: the `send-push` function and its schedule are deployed after the first Admin exists.
+- In-app notifications. Web Push is built but **off** in this release: the Production build has no VAPID public key, so Settings shows "Push is not set up for this build yet. In-app notifications still work.", and `send-push` and its schedule are not deployed. Push is turned on in a later release.
 
 ### Fixed
 - RSVP save is update-then-insert. Members hold UPDATE on `response` only, so the old upsert was refused.
