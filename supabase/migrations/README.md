@@ -46,6 +46,13 @@ Apply files in filename order to the ODZ Supabase project (SQL editor or `supaba
 * The `created_by` before-update triggers on `events`, `minutes`, `documents` and `traffic` pinned the author, which made the foreign keys' ON DELETE SET NULL fail. They now allow created_by to become null when the author no longer exists.
 * Re-onboarding: a removed account stays banned and keeps its email and callsign. Someone who returns needs a fresh invite and either a different email and callsign, or the Admin hard-deletes the removed account first.
 
+`20261013220000_support_tier.sql` (MVA-237): the Support tier, a role-based tier for non-playing team members.
+* `tiers.role_based` marks Support (data, not a name check); `tiers.support_barred` marks Command and Old Guard, which can never be moved to or from a role-based tier. Support is last in the list for display, is invitable, does not count for readiness, and has **no capabilities**. Traffic is readable by any approved account, so Support reads it without a grant; event details, minutes, documents, RSVPs and `member_private` stay behind their capabilities.
+* `move_support_tier(profile, tier, note)` (edit_roster; note 3 to 300 characters) is the only way across the player/Support line; `profiles_guard()` refuses direct updates that cross it for signed-in callers. The note is stored on `profile_audit.note` (new column) and shown in the Audit feed. Moving a Support account into a player tier that has no private details re-opens first-login setup, so they are collected first. Private details of a player moved to Support are kept.
+* `complete_support_setup(callsign)` and `my_tier_is_role_based()`: Support's first-login setup asks for a callsign only.
+* `invites_prepare()`: an invite with no tier still defaults to the least senior **player** tier (Recruit).
+* Office-seat rejection for Support (designations) is built in MVA-220, which reads `tiers.role_based`.
+
 ## Dashboard settings this schema assumes (Auth)
 
 * Email confirmation OFF (no SMTP yet, MVA-200).

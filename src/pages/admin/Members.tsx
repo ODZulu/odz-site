@@ -1,13 +1,15 @@
 import { useState } from 'react'
 import { useAuth } from '../../auth/AuthProvider'
-import { Chip, Panel, Select, Table } from '../../components'
+import { Button, Chip, Field, Panel, Select, Table } from '../../components'
 import { adminMessage } from '../../lib/admin'
 import { supabase } from '../../lib/supabase'
+import { crossesSupportLine, supportMoveBlock, TIER_NOTE_MAX, validateTierNote, type TierFlags } from '../../lib/tiers'
 import { useLoad } from '../../lib/useLoad'
 import RemovedMembers from './RemovedMembers'
 
 type MemberRow = { id: string; callsign: string | null; status: string; is_admin: boolean; tier_id: string | null }
-type TierRow = { id: string; name: string; rank: number }
+type TierRow = TierFlags & { rank: number }
+type PendingMove = { id: string; callsign: string; to: TierRow; note: string }
 
 /**
  * Set a member's tier and status, and the admin flag. The database applies the tier entry and
@@ -26,11 +28,42 @@ const myId = session?.user.id
     return data as MemberRow[]
   })
   const tiers = useLoad(async () => {
-    const { data, error } = await supabase!.from('tiers').select('id,name,rank').order('rank')
+    const { data, error } = await supabase!.from('tiers').select('id,name,rank,role_based,support_barred').order('rank')
     if (error) throw error
     return data as TierRow[]
   })
   const [error, setError] = useState<string | null>(null)
+  const [move, setMove] = useState<PendingMove | null>(null)
+
+  /**
+   * A tier change that crosses the player/Support line needs a note and goes through
+   * move_support_tier(); every other change is a plain update.
+   */
+  function pickTier(row: MemberRow, tierId: string) {
+    const list = tiers.data ?? []
+    const from = list.find((t) => t.id === row.tier_id)
+    const to = list.find((t) => t.id === tierId)
+    if (from && to && crossesSupportLine(from, to)) {
+      const blocked = supportMoveBlock(from, to)
+      if (blocked) return setError(blocked)
+      setError(null)
+      return setMove({ id: row.id, callsign: row.callsign ?? 'member', to, note: '' })
+    }
+    void change(row.id, { tier_id: tierId || null })
+  }
+
+  async function confirmMove() {
+    if (!supabase || !move || validateTierNote(move.note)) return
+    setError(null)
+    const { error: err } = await supabase.rpc('move_support_tier', {
+      p_profile: move.id,
+      p_tier: move.to.id,
+      p_note: move.note.trim(),
+    })
+    if (err) setError(adminMessage(err))
+    else setMove(null)
+    void members.reload()
+  }
 
   async function change(id: string, patch: Partial<Pick<MemberRow, 'tier_id' | 'status' | 'is_admin'>>) {
     if (!supabase) return
@@ -52,6 +85,28 @@ const myId = session?.user.id
           {error}
         </p>
       )}
+      {move && (
+        <div className="odz-stack" style={{ marginBottom: '1rem' }}>
+          <p>
+            {`Move ${move.callsign} to ${move.to.name}. This is logged with your note.`}
+          </p>
+          <Field
+            label="Note (required)"
+            autoComplete="off"
+            maxLength={TIER_NOTE_MAX}
+            value={move.note}
+            onChange={(e) => setMove({ ...move, note: e.target.value })}
+          />
+          <div className="odz-row">
+            <Button disabled={validateTierNote(move.note) !== null} onClick={() => void confirmMove()}>
+              {`Confirm: move ${move.callsign}`}
+            </Button>
+            <Button variant="ghost" onClick={() => setMove(null)}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
       {members.loading || tiers.loading ? (
         <p className="odz-muted" role="status">
           Loading
@@ -72,7 +127,7 @@ const myId = session?.user.id
                   hideLabel
                   value={r.tier_id ?? ''}
                   disabled={!canTier || r.id === myId}
-                  onChange={(e) => void change(r.id, { tier_id: e.target.value || null })}
+                  onChange={(e) => pickTier(r, e.target.value)}
                   options={tierOptions}
                 />
               ),

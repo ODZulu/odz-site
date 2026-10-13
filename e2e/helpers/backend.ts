@@ -68,7 +68,7 @@ export async function createInvite(opts2: { tier?: string; expiresAt?: string; r
   return data.code as string
 }
 
-export type SeedLevel = 'pending' | 'pending-setup-done' | 'recruit' | 'member' | 'command' | 'admin'
+export type SeedLevel = 'pending' | 'pending-setup-done' | 'recruit' | 'member' | 'support' | 'command' | 'admin'
 
 export type SeededUser = { id: string; email: string; password: string; callsign: string }
 
@@ -91,10 +91,14 @@ export async function seedUser(level: SeedLevel, tag: string = level): Promise<S
   if (error || !data.user) throw new Error('could not create e2e user')
   const id = data.user.id
 
-  if (level !== 'pending') {
+  if (level === 'support') {
+    // Support gives a callsign only: no private details row.
+    const prof = await a.from('profiles').update({ callsign, setup_complete: true, tier_id: await tierId('Support') }).eq('id', id)
+    if (prof.error) throw new Error('could not seed support profile')
+  } else if (level !== 'pending') {
     await setupDone(id, callsign)
   }
-  if (level === 'recruit' || level === 'member' || level === 'command' || level === 'admin') {
+  if (level === 'support' || level === 'recruit' || level === 'member' || level === 'command' || level === 'admin') {
     await a.from('profiles').update({ status: 'approved' }).eq('id', id)
   }
   if (level === 'member') await a.from('profiles').update({ tier_id: await tierId('Member') }).eq('id', id)

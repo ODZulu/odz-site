@@ -10,9 +10,17 @@ import {
   type CapMatrix,
 } from '../../lib/admin'
 import { supabase } from '../../lib/supabase'
+import { ROLE_BASED_NOTE } from '../../lib/tiers'
 import { useLoad } from '../../lib/useLoad'
 
-type TierRow = { id: string; name: string; rank: number; entry_requires_tier_id: string | null; release_to_tier_id: string | null }
+type TierRow = {
+  id: string
+  name: string
+  rank: number
+  entry_requires_tier_id: string | null
+  release_to_tier_id: string | null
+  role_based: boolean
+}
 type CapRow = { key: string; description: string }
 type Data = { tiers: TierRow[]; caps: CapRow[]; matrix: CapMatrix; members: Record<string, number> }
 
@@ -21,7 +29,7 @@ export default function Tiers() {
   const data = useLoad<Data>(async () => {
     const c = supabase!
     const [t, k, tc, p] = await Promise.all([
-      c.from('tiers').select('id,name,rank,entry_requires_tier_id,release_to_tier_id').order('rank'),
+      c.from('tiers').select('id,name,rank,entry_requires_tier_id,release_to_tier_id,role_based').order('rank'),
       c.from('capabilities').select('key,description').order('key'),
       c.from('tier_capabilities').select('tier_id,capability_key'),
       c.from('profiles').select('tier_id').eq('status', 'approved'),
@@ -166,6 +174,11 @@ export default function Tiers() {
                   <ConfirmAction label="Delete" confirmLabel="Confirm delete" onConfirm={() => void run('delete_tier', { p_id: t.id })} />
                 )}
               </div>
+              {t.role_based && (
+                <p className="odz-muted" style={{ marginBottom: '0.75rem' }}>
+                  {ROLE_BASED_NOTE}
+                </p>
+              )}
               {hasRules && (
                 <p className="odz-muted" style={{ marginBottom: '0.75rem' }}>
                   Entry and release rules are fixed (Command is entered from Old Guard and releases to Old Guard).

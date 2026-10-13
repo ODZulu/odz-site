@@ -1,9 +1,9 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { useAuth } from '../auth/AuthProvider'
 import { Button, Field, Panel } from '../components'
 import { formatPhoneInput, normalizeAllergies, normalizePhone } from '../lib/phone'
 import { supabase } from '../lib/supabase'
-import { setupErrorField, validateSetup, type SetupErrors, type SetupValues } from '../lib/validate'
+import { setupErrorField, validateCallsign, validateSetup, type SetupErrors, type SetupValues } from '../lib/validate'
 
 const empty: SetupValues = {
   callsign: '',
@@ -26,6 +26,13 @@ export default function Setup() {
   const [v, setV] = useState<SetupValues>(empty)
   const [errors, setErrors] = useState<SetupErrors & { form?: string }>({})
   const [busy, setBusy] = useState(false)
+  // Role-based accounts (Support) give a callsign only. Unknown until the answer arrives; the
+  // full form shows meanwhile and is swapped out, never submitted blind.
+  const [roleBased, setRoleBased] = useState<boolean | null>(null)
+  useEffect(() => {
+    if (!supabase) return
+    void supabase.rpc('my_tier_is_role_based').then(({ data }) => setRoleBased(data === true))
+  }, [])
   const today = new Date()
   const max = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
 
@@ -45,6 +52,24 @@ export default function Setup() {
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
     if (!supabase) return
+    if (roleBased) {
+      const bad = validateCallsign(v.callsign)
+      if (bad) return setErrors({ callsign: bad })
+      setBusy(true)
+      const { error: err } = await supabase.rpc('complete_support_setup', { p_callsign: v.callsign.trim() })
+      if (!err) {
+        await refreshProfile()
+        return
+      }
+      setBusy(false)
+      return setErrors(
+        err.message === 'callsign_taken'
+          ? { callsign: 'That callsign is taken.' }
+          : err.message === 'invalid_callsign'
+            ? { callsign: 'Check this field.' }
+            : { form: 'Could not save. Try again.' },
+      )
+    }
     const found = validateSetup(v)
     if (Object.keys(found).length > 0) return setErrors(found)
     setBusy(true)
@@ -78,10 +103,14 @@ export default function Setup() {
         Account setup
       </h1>
       <Panel title="Before you start">
+        {roleBased ? (
+          <p>Choose a callsign. That is all we need from you for now.</p>
+        ) : (
         <p>
           This information is kept private. Only you, Command and Admin can see it. It is used for event safety and
           team purchases such as tickets. To correct or delete anything, ask Command.
         </p>
+        )}
       </Panel>
       <form
         onSubmit={onSubmit}
@@ -89,6 +118,8 @@ export default function Setup() {
         style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}
       >
         <Field label="Callsign" autoComplete="off" hint="Your handle. 2 to 24 characters." {...bind('callsign')} />
+        {!roleBased && (
+          <>
         <Field label="Full legal name" autoComplete="name" {...bind('legalName')} />
         <Field label="Date of birth" type="date" max={max} autoComplete="bday" {...bind('dob')} />
         <Field label="Mobile phone (optional)" type="tel" autoComplete="tel" {...bindPhone('phone')} />
@@ -102,6 +133,8 @@ export default function Setup() {
         <Field label="Emergency contact name" autoComplete="off" {...bind('emergencyName')} />
         <Field label="Emergency contact relationship" autoComplete="off" {...bind('emergencyRelationship')} />
         <Field label="Emergency contact phone" type="tel" autoComplete="off" {...bindPhone('emergencyPhone')} />
+          </>
+        )}
         {errors.form && (
           <p role="alert" style={{ color: 'var(--alert)' }}>
             {errors.form}
