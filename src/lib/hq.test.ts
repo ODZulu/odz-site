@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('./supabase', () => ({ supabase: null, isSupabaseConfigured: false }))
 
-import { breakdownBars, canRsvp, groupRsvps, readinessParts, readinessSummary, sortTraffic, validateTraffic, type Readiness, type RsvpRow } from './hq'
+import { authorLabel, breakdownBars, canRsvp, groupRsvps, readinessParts, readinessSummary, sortTraffic, validateTraffic, type Readiness, type RsvpRow } from './hq'
 
 describe('sortTraffic', () => {
   it('puts pinned first, then newest first', () => {
@@ -80,5 +80,13 @@ describe('breakdownBars', () => {
   })
   it('does not divide by zero when nobody is on the roster', () => {
     expect(breakdownBars([{ tier_name: 'Command', tier_rank: 1, member_count: 0 }])[0].share).toBe(0)
+  })
+})
+
+describe('authorLabel', () => {
+  it('shows the callsign', () => expect(authorLabel({ callsign: 'Fake-Cmd' })).toBe('Fake-Cmd'))
+  it('attributes a removed or deleted author to Former member', () => {
+    expect(authorLabel(null)).toBe('Former member')
+    expect(authorLabel({ callsign: null })).toBe('Former member')
   })
 })

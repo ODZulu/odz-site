@@ -63,6 +63,8 @@ There is no service-role fallback against the hosted dev project: the service-ro
 
 * `e2e/hq.spec.ts` (backend): every HQ panel has an empty state and anon reads no traffic; Command posts traffic, a Member sees it pinned first as plain text and cannot post, archived posts disappear for members; RSVP answers update the readiness counts and a past event is closed.
 
+* `e2e/removal.spec.ts` (backend): Admin removes a member from the roster page (reason required, separate confirm), private details are purged and the profile is marked removed; a removed member cannot sign in and an earlier session reads nothing; Command is not offered removal and the RPC refuses it, as it does anon and members; an Admin cannot remove themselves; authored traffic shows "Former member" after removal and after the permanent delete.
+
 New tickets add their suites to `e2e/` and list them here.
 
 ## Failure artifacts

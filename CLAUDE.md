@@ -42,7 +42,7 @@ Tier 1: Vitest in CI on every push. Tier 2: Playwright (docs/TESTING.md), CI on 
 
 ## Version tracking
 - App version: 0.1.0 (release candidate; GO pending on MVA-206)
-- Schema version: 12 migrations in supabase/migrations (see its README)
+- Schema version: 13 migrations in supabase/migrations (see its README)
 - Last GO build: none
 - Active branch: dev
 

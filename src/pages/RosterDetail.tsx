@@ -5,6 +5,7 @@ import { findByCallsign } from '../lib/roster'
 import { supabase } from '../lib/supabase'
 import { formatStampPhoenix } from '../lib/time'
 import { useLoad } from '../lib/useLoad'
+import { RemoveMemberPanel } from './RemoveMemberPanel'
 import { loadRoster } from './Roster'
 
 type PrivateRow = {
@@ -20,7 +21,7 @@ type PrivateRow = {
 /** Text is rendered as text (React escapes it): a bio with markup shows the markup, not its effect. */
 export default function RosterDetail() {
   const { callsign = '' } = useParams()
-  const { can } = useAuth()
+  const { can, isAdmin, session } = useAuth()
   const roster = useLoad(loadRoster)
   const member = findByCallsign(roster.data ?? [], decodeURIComponent(callsign))
   const showPrivate = can('view_member_private')
@@ -35,6 +36,17 @@ export default function RosterDetail() {
     if (error) throw new Error('private')
     return (data as PrivateRow | null) ?? null
   }, [member?.id, showPrivate])
+
+  // Admin only: what the removal panel needs to decide what to offer (the database decides what is allowed).
+  const removal = useLoad<{ is_admin: boolean; status: string; approvedAdmins: number } | null>(async () => {
+    if (!supabase || !member || !isAdmin) return null
+    const [row, admins] = await Promise.all([
+      supabase.from('profiles').select('is_admin,status').eq('id', member.id).maybeSingle(),
+      supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('is_admin', true).eq('status', 'approved'),
+    ])
+    if (row.error || admins.error || !row.data) throw new Error('removal')
+    return { ...(row.data as { is_admin: boolean; status: string }), approvedAdmins: admins.count ?? 0 }
+  }, [member?.id, isAdmin])
 
   if (roster.loading) {
     return (
@@ -100,6 +112,14 @@ export default function RosterDetail() {
               <p className="odz-muted">No private details on file.</p>
             )}
           </Panel>
+        )}
+        {isAdmin && removal.data && (
+          <RemoveMemberPanel
+            callsign={member.callsign}
+            target={{ id: member.id, is_admin: removal.data.is_admin, status: removal.data.status }}
+            selfId={session?.user.id}
+            approvedAdmins={removal.data.approvedAdmins}
+          />
         )}
       </div>
     </>

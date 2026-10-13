@@ -35,6 +35,9 @@ export function validateTraffic(v: { title: string; body: string }): TrafficErro
   return e
 }
 
+/** A post whose author is gone (removed or deleted) is attributed to "Former member". */
+export const authorLabel = (author: TrafficPost['author']): string => author?.callsign ?? 'Former member'
+
 const TRAFFIC_COLUMNS = 'id,title,body,pinned,created_at,archived_at,author:profiles(callsign)'
 
 export async function loadTraffic(limit: number, offset = 0): Promise<{ posts: TrafficPost[]; total: number }> {

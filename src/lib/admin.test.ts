@@ -99,6 +99,12 @@ describe('adminMessage', () => {
     expect(adminMessage({ message: 'tier_has_members' })).toMatch(/members/)
     expect(adminMessage({ message: 'cannot change your own tier' })).toMatch(/own tier/)
   })
+  it('translates the removal refusals', () => {
+    expect(adminMessage({ message: 'last_admin' })).toMatch(/one admin/)
+    expect(adminMessage({ message: 'cannot_remove_self' })).toMatch(/yourself/)
+    expect(adminMessage({ message: 'invalid_reason' })).toMatch(/reason/)
+    expect(adminMessage({ message: 'account was removed' })).toMatch(/removed/)
+  })
   it('never passes unknown text through', () => {
     expect(adminMessage({ message: 'Failing row contains (1990-01-01)' })).toBe('That change was refused.')
     expect(adminMessage(null)).toBe('That change was refused.')

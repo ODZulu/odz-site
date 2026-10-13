@@ -38,6 +38,14 @@ Apply files in filename order to the ODZ Supabase project (SQL editor or `supaba
 
 `20261011180000_hq_panels.sql` (MVA-142): `write_traffic` (Command), `traffic` (archive only, titles-only audit), `event_rsvps` (own row, only before an event starts, never for a cancelled one), `event_readiness()` and `tier_breakdown()` (counts only). `tiers.counts_for_readiness` marks which tiers count toward readiness (Command, Old Guard, Member; Contractor is excluded because it cannot RSVP); it is data on the tier, not edited from the admin screen yet.
 
+`20261013190000_member_removal.sql` (MVA-209): soft removal and hard delete, both Admin-only SECURITY DEFINER RPCs.
+* `profiles.status` gains `removed`; `removed_at` and `removed_by` added (additive, no row rewritten). `remove_member(profile, reason)` marks the profile, purges `member_private`, notifications, prefs and push subscriptions, revokes the member's unused invites, bans the auth user for 100 years and ends their sessions. The tier and callsign are kept (history and seniority are not touched). Refuses: non-Admin, self, the last Admin, an already-removed member, a reason outside 3 to 500 characters.
+* `delete_removed_member(profile, reason)` hard-deletes a removed member (auth user, cascading to the profile, RSVPs and private rows). Authored events, minutes, documents and traffic stay with a null author, shown as "Former member".
+* `member_removals`: Admin-only log (who, whom, when, reason, callsign snapshot, no FK so it outlives the profile). The reason lives here and not on `profiles`, because other members and the removed member can read profile rows. `list_audit()` includes these rows for Admin only.
+* `profiles_guard()`: `removed` can only be set by `remove_member()`; a removed row is frozen for signed-in callers (no reinstating, no tier change). `member_private` refuses writes for a removed account (covers setup of an account removed before it finished).
+* The `created_by` before-update triggers on `events`, `minutes`, `documents` and `traffic` pinned the author, which made the foreign keys' ON DELETE SET NULL fail. They now allow created_by to become null when the author no longer exists.
+* Re-onboarding: a removed account stays banned and keeps its email and callsign. Someone who returns needs a fresh invite and either a different email and callsign, or the Admin hard-deletes the removed account first.
+
 ## Dashboard settings this schema assumes (Auth)
 
 * Email confirmation OFF (no SMTP yet, MVA-200).
