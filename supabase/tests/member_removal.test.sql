@@ -44,6 +44,7 @@ begin
 
   -- Things the member authored, an open invite they issued, and dependants that must go with them.
   insert into public.events (title, starts_at, created_by) values ('Fake event', now() + interval '2 days', v_mem) returning id into e1;
+  insert into public.event_details (event_id, location_name, description) values (e1, 'Fake place', 'Fake description');
   insert into public.traffic (title, body, created_by) values ('Fake post', 'Fake body', v_mem) returning id into tr1;
   insert into public.minutes (title, meeting_date, created_by) values ('Fake minutes', current_date, v_mem) returning id into mn1;
   insert into public.event_rsvps (event_id, profile_id, response) values (e1, v_mem, 'in');
@@ -155,8 +156,11 @@ begin
   ------------------------------------------------------------------ the removed member is locked out of data
   perform set_config('request.jwt.claims', json_build_object('sub', v_mem, 'role', 'authenticated')::text, true);
   set local role authenticated;
-  select count(*) into n from public.events;
-  if n <> 0 then raise exception 'FAIL: removed member reads events'; end if;
+  -- The events listing is public by design (title and times); the gated data is event_details.
+  select count(*) into n from public.events where id = e1;
+  if n <> 1 then raise exception 'FAIL: removed member should still see the public events listing'; end if;
+  select count(*) into n from public.event_details;
+  if n <> 0 then raise exception 'FAIL: removed member reads event details'; end if;
   select count(*) into n from public.traffic;
   if n <> 0 then raise exception 'FAIL: removed member reads traffic'; end if;
   select count(*) into n from public.minutes;
@@ -186,6 +190,9 @@ begin
   ------------------------------------------------------------------ others: roster, audit visibility
   perform set_config('request.jwt.claims', json_build_object('sub', v_mem2, 'role', 'authenticated')::text, true);
   set local role authenticated;
+  -- Positive control for the event_details assertion above: an approved member does read it.
+  select count(*) into n from public.event_details where event_id = e1;
+  if n <> 1 then raise exception 'FAIL: approved member cannot read event details (control)'; end if;
   select count(*) into n from public.profiles where id = v_mem;
   if n <> 0 then raise exception 'FAIL: a member still sees the removed profile'; end if;
   select count(*) into n from public.profiles p where p.status = 'removed';
