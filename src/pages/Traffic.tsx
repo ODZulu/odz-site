@@ -4,6 +4,7 @@ import { useAuth } from '../auth/AuthProvider'
 import { Button, Chip, ConfirmAction, Field, Panel, Textarea } from '../components'
 import {
   archiveTraffic,
+  authorLabel,
   loadTraffic,
   postTraffic,
   setTrafficPinned,
@@ -104,7 +105,7 @@ export default function Traffic() {
               <article key={p.id} className="odz-post">
                 <div className="odz-row">
                   {p.pinned && <Chip variant="accent">PINNED</Chip>}
-                  <span className="odz-label">{`${p.author?.callsign ?? 'HQ'} · ${formatStampPhoenix(p.created_at)}`}</span>
+                  <span className="odz-label">{`${authorLabel(p.author)} · ${formatStampPhoenix(p.created_at)}`}</span>
                 </div>
                 <h3 className="odz-post__title">{p.title}</h3>
                 <p style={{ whiteSpace: 'pre-wrap' }}>{p.body}</p>

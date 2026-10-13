@@ -3,7 +3,7 @@ import { useAuth } from '../auth/AuthProvider'
 import { Chip, KeyValue, Panel } from '../components'
 import { ReadinessMeter } from '../components/ReadinessMeter'
 import { listEvents, listPublicEvents, splitUpcoming, type EventDetails, type PublicEvent } from '../lib/events'
-import { breakdownBars, loadReadiness, loadTierBreakdown, loadTraffic } from '../lib/hq'
+import { authorLabel, breakdownBars, loadReadiness, loadTierBreakdown, loadTraffic } from '../lib/hq'
 import { formatDateLine, formatStampPhoenix, formatTimeL } from '../lib/time'
 import { useLoad } from '../lib/useLoad'
 
@@ -77,7 +77,7 @@ export default function Hq() {
                 <article key={p.id} className="odz-post">
                   <div className="odz-row">
                     {p.pinned && <Chip variant="accent">PINNED</Chip>}
-                    <span className="odz-label">{`${p.author?.callsign ?? 'HQ'} · ${formatStampPhoenix(p.created_at)}`}</span>
+                    <span className="odz-label">{`${authorLabel(p.author)} · ${formatStampPhoenix(p.created_at)}`}</span>
                   </div>
                   <h3 className="odz-post__title">{p.title}</h3>
                   <p style={{ whiteSpace: 'pre-wrap' }}>{p.body}</p>

@@ -4,6 +4,7 @@ import { Chip, Panel, Select, Table } from '../../components'
 import { adminMessage } from '../../lib/admin'
 import { supabase } from '../../lib/supabase'
 import { useLoad } from '../../lib/useLoad'
+import RemovedMembers from './RemovedMembers'
 
 type MemberRow = { id: string; callsign: string | null; status: string; is_admin: boolean; tier_id: string | null }
 type TierRow = { id: string; name: string; rank: number }
@@ -44,6 +45,7 @@ const myId = session?.user.id
   const canStatus = can('approve_members')
 
   return (
+    <>
     <Panel title="Members">
       {error && (
         <p role="alert" style={{ color: 'var(--alert)', marginBottom: '0.75rem' }}>
@@ -114,5 +116,7 @@ const myId = session?.user.id
         />
       )}
     </Panel>
+    {isAdmin && <RemovedMembers />}
+    </>
   )
 }

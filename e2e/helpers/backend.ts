@@ -186,6 +186,7 @@ export async function cleanup(): Promise<void> {
   }
   if (ids.length) {
     await a.from('profile_audit').delete().in('profile_id', ids)
+    await a.from('member_removals').delete().in('profile_id', ids)
     for (const id of ids) await a.auth.admin.deleteUser(id)
   }
   const inv = await a.from('invites').select('id').like('note', `${PREFIX}%`)
