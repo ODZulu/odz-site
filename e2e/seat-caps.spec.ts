@@ -120,3 +120,12 @@ test('Admin changes the caps from the Tiers screen; it is logged and a plain Mem
   const still = await admin().from('seat_caps').select('old_guard_max').single()
   expect(still.data?.old_guard_max).toBe(7)
 })
+
+test('set_seat_caps over the API: an Admin changes the caps and the call reports no error', async () => {
+  const boss = await seedUser('admin', 'seat-api-admin')
+  const as = await asUser(boss.email, boss.password)
+  const r = await as.rpc('set_seat_caps', { p_old_guard_max: 8, p_command_max: 2 })
+  expect(r.error?.message).toBeUndefined()
+  const caps = await admin().from('seat_caps').select('old_guard_max,command_max').single()
+  expect(caps.data).toEqual({ old_guard_max: 8, command_max: 2 })
+})
