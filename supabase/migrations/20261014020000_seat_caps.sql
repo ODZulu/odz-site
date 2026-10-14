@@ -161,7 +161,8 @@ begin
   end if;
 
   update public.seat_caps
-     set old_guard_max = p_old_guard_max, command_max = p_command_max, updated_at = now(), updated_by = auth.uid();
+     set old_guard_max = p_old_guard_max, command_max = p_command_max, updated_at = now(), updated_by = auth.uid()
+   where singleton;  -- an explicit WHERE: the API layer rejects an UPDATE without one
 
   insert into public.settings_audit (actor_id, event, target, detail)
   values (
