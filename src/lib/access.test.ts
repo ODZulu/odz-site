@@ -18,6 +18,10 @@ describe('homeFor', () => {
     expect(homeFor(state('suspended', false))).toBe('/denied')
     expect(homeFor(state('suspended', true))).toBe('/denied')
   })
+  it('denies removed accounts, even before setup', () => {
+    expect(homeFor(state('removed', false))).toBe('/denied')
+    expect(homeFor(state('removed', true))).toBe('/denied')
+  })
   it('makes setup come first, pending or not', () => {
     expect(homeFor(state('pending', false))).toBe('/setup')
     expect(homeFor(state('approved', false))).toBe('/setup')
@@ -33,6 +37,7 @@ describe('redirectFor', () => {
   it('keeps accounts with incomplete setup out of the app', () =>
     expect(redirectFor(state('approved', false), 'app')).toBe('/setup'))
   it('keeps suspended accounts out of the app', () => expect(redirectFor(state('suspended', true), 'app')).toBe('/denied'))
+  it('keeps removed accounts out of the app', () => expect(redirectFor(state('removed', true), 'app')).toBe('/denied'))
   it('renders the page an account belongs on', () => {
     expect(redirectFor(state('approved', true), 'app')).toBeNull()
     expect(redirectFor(state('pending', false), 'setup')).toBeNull()

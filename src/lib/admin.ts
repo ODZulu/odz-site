@@ -3,6 +3,8 @@
  * helpers let the screens explain a refusal before asking, and decide what to show.
  */
 
+import { fullMessage } from './seats'
+
 export const CONFIRM_WORD = 'PRIVATE'
 export const PRIVATE_CAPABILITY = 'view_member_private'
 export const LOCKOUT_CAPABILITY = 'approve_members'
@@ -100,6 +102,18 @@ const messages: Array<[needle: string, text: string]> = [
   ['invalid_order', 'The tier order was not valid. Reload and try again.'],
   ['invalid_days', 'Expiry must be 1 to 30 days.'],
   ['last admin', 'There must always be one admin.'],
+  ['last_admin', 'There must always be one admin.'],
+  ['cannot_remove_self', 'You cannot remove yourself.'],
+  ['invalid_caps', 'Caps must be whole numbers from 1 to 99, and Command cannot exceed Old Guard.'],
+  ['invalid_reason', 'Give a reason of 3 to 500 characters.'],
+  ['already_removed', 'That member is already removed.'],
+  ['not_removed', 'Only a removed member can be deleted for good.'],
+  ['not_found', 'That member was not found. Reload and try again.'],
+  ['invalid_note', 'Write a note of 3 to 300 characters.'],
+  ['tier_barred', 'Command and Old Guard cannot be moved to or from a role-based tier directly. Change the player tier first.'],
+  ['not_a_support_move', 'That is an ordinary tier change. Use the tier list.'],
+  ['use move_support_tier', 'Moving to or from Support needs a note. Use the move option.'],
+  ['account was removed', 'That account was removed and cannot be changed.'],
   ['own tier', 'You cannot change your own tier.'],
   ['own status', 'You cannot change your own status.'],
   ['prerequisite', 'That tier needs its prerequisite tier first (Command is entered from Old Guard).'],
@@ -109,6 +123,8 @@ const messages: Array<[needle: string, text: string]> = [
 /** Friendly text for a database refusal. Unknown errors get a generic line and nothing else. */
 export function adminMessage(error: { message?: string } | null | undefined): string {
   const m = error?.message ?? ''
+  const full = fullMessage(m)
+  if (full) return full
   const hit = messages.find(([needle]) => m.includes(needle))
   return hit ? hit[1] : 'That change was refused.'
 }

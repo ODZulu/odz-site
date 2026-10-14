@@ -2,11 +2,11 @@
  * Where an account may be, decided from its state (MVA-199). This is navigation only: what a
  * user can actually read is decided by RLS in the database.
  *
- * Order matters: a suspended account is denied first, then setup must be complete (it is shown
+ * Order matters: a suspended or removed account is denied first, then setup must be complete (it is shown
  * once, right after the first sign-in), then pending accounts wait, then approved accounts enter.
  */
 
-export type AccountStatus = 'pending' | 'approved' | 'suspended'
+export type AccountStatus = 'pending' | 'approved' | 'suspended' | 'removed'
 
 export type AccessState = {
   loading: boolean
@@ -22,7 +22,7 @@ export const HOME = '/hq'
 export function homeFor(state: AccessState): string | null {
   if (state.loading) return null
   if (!state.signedIn || !state.profile) return '/login'
-  if (state.profile.status === 'suspended') return '/denied'
+  if (state.profile.status === 'suspended' || state.profile.status === 'removed') return '/denied'
   if (!state.profile.setup_complete) return '/setup'
   if (state.profile.status === 'pending') return '/pending'
   return HOME

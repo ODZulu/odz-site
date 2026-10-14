@@ -68,7 +68,7 @@ export async function createInvite(opts2: { tier?: string; expiresAt?: string; r
   return data.code as string
 }
 
-export type SeedLevel = 'pending' | 'pending-setup-done' | 'recruit' | 'member' | 'command' | 'admin'
+export type SeedLevel = 'pending' | 'pending-setup-done' | 'recruit' | 'member' | 'support' | 'command' | 'admin'
 
 export type SeededUser = { id: string; email: string; password: string; callsign: string }
 
@@ -79,6 +79,9 @@ export type SeededUser = { id: string; email: string; password: string; callsign
 export async function seedUser(level: SeedLevel, tag: string = level): Promise<SeededUser> {
   const a = admin()
   if (level === 'admin') await ensureKeepAdmin()
+  // Seat caps (MVA-234) would stop suites that seed several Command accounts; open them on this
+  // throwaway stack. e2e/seat-caps.spec.ts sets its own caps after seeding.
+  if (level === 'command') await openSeatCaps()
   const email = fakeEmail(tag)
   const callsign = fakeCallsign()
   const code = await createInvite()
@@ -91,10 +94,14 @@ export async function seedUser(level: SeedLevel, tag: string = level): Promise<S
   if (error || !data.user) throw new Error('could not create e2e user')
   const id = data.user.id
 
-  if (level !== 'pending') {
+  if (level === 'support') {
+    // Support gives a callsign only: no private details row.
+    const prof = await a.from('profiles').update({ callsign, setup_complete: true, tier_id: await tierId('Support') }).eq('id', id)
+    if (prof.error) throw new Error('could not seed support profile')
+  } else if (level !== 'pending') {
     await setupDone(id, callsign)
   }
-  if (level === 'recruit' || level === 'member' || level === 'command' || level === 'admin') {
+  if (level === 'support' || level === 'recruit' || level === 'member' || level === 'command' || level === 'admin') {
     await a.from('profiles').update({ status: 'approved' }).eq('id', id)
   }
   if (level === 'member') await a.from('profiles').update({ tier_id: await tierId('Member') }).eq('id', id)
@@ -105,6 +112,14 @@ export async function seedUser(level: SeedLevel, tag: string = level): Promise<S
   if (level === 'admin') await a.from('profiles').update({ is_admin: true }).eq('id', id)
   return { id, email, password: PASSWORD, callsign }
 }
+
+/** Sets the seat caps (service role, local stack only). */
+export async function setSeatCaps(oldGuardMax: number, commandMax: number): Promise<void> {
+  const r = await admin().from('seat_caps').update({ old_guard_max: oldGuardMax, command_max: commandMax }).eq('singleton', true)
+  if (r.error) throw new Error('could not set seat caps')
+}
+
+export const openSeatCaps = () => setSeatCaps(99, 99)
 
 /**
  * The last-admin rule applies to everyone, so an e2e admin can only be deleted while another admin
@@ -186,6 +201,7 @@ export async function cleanup(): Promise<void> {
   }
   if (ids.length) {
     await a.from('profile_audit').delete().in('profile_id', ids)
+    await a.from('member_removals').delete().in('profile_id', ids)
     for (const id of ids) await a.auth.admin.deleteUser(id)
   }
   const inv = await a.from('invites').select('id').like('note', `${PREFIX}%`)

@@ -92,7 +92,7 @@ begin
   if public.has_capability('write_events') then raise exception 'FAIL: member has write_events'; end if;
   if public.has_capability('approve_members') then raise exception 'FAIL: member has approve_members'; end if;
 
-  select count(*) into n from public.tiers; if n <> 7 then raise exception 'FAIL: member should read 7 tiers (got %)', n; end if;
+  select count(*) into n from public.tiers; if n <> 8 then raise exception 'FAIL: member should read 8 tiers (got %)', n; end if;
   if public.has_capability('edit_roster') then raise exception 'FAIL: member has edit_roster'; end if;
 
   -- The audit log is not readable or writable by members.
@@ -262,7 +262,7 @@ begin
 
   ------------------------------------------------------------------ seed
   select count(*) into n from public.tiers where name <> 'Clerk';
-  if n <> 6 then raise exception 'FAIL: expected 6 seeded tiers (got %)', n; end if;
+  if n <> 7 then raise exception 'FAIL: expected 7 seeded tiers (got %)', n; end if;
   select count(*) into n from public.tiers where name = 'Contractor' and rank = 4;
   if n <> 1 then raise exception 'FAIL: Contractor should sit at rank 4'; end if;
   select count(*) into n from public.tiers where is_default_for_approval and name = 'Recruit';

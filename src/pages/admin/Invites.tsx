@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Button, Chip, ConfirmAction, Field, Panel, Select, Table } from '../../components'
 import { adminMessage, EXPIRY_DEFAULT_DAYS, groupCode, joinLink, maskCode, validateExpiryDays } from '../../lib/admin'
 import { formatStamp } from '../../lib/format'
+import { defaultInviteTier } from '../../lib/tiers'
 import { supabase } from '../../lib/supabase'
 import { useLoad } from '../../lib/useLoad'
 
@@ -16,7 +17,7 @@ type InviteRow = {
   status: 'active' | 'used' | 'expired' | 'revoked'
   used_by: string | null
 }
-type TierRow = { id: string; name: string; rank: number; invitable: boolean }
+type TierRow = { id: string; name: string; rank: number; invitable: boolean; role_based: boolean }
 
 const statusChip = {
   active: <Chip variant="go">ACTIVE</Chip>,
@@ -32,7 +33,7 @@ export default function Invites() {
     return data as InviteRow[]
   })
   const tiers = useLoad(async () => {
-    const { data, error } = await supabase!.from('tiers').select('id,name,rank,invitable').order('rank')
+    const { data, error } = await supabase!.from('tiers').select('id,name,rank,invitable,role_based').order('rank')
     if (error) throw error
     return (data as TierRow[]).filter((t) => t.invitable)
   })
@@ -47,8 +48,8 @@ export default function Invites() {
   const [copied, setCopied] = useState(false)
 
   const tierOptions = (tiers.data ?? []).map((t) => ({ value: t.id, label: t.name }))
-  // Default to the least senior tier an invite may grant (Recruit).
-  const defaultTier = tiers.data && tiers.data.length > 0 ? tiers.data[tiers.data.length - 1].id : ''
+  // Default to the least senior player tier an invite may grant (Recruit), never a role-based one.
+  const defaultTier = defaultInviteTier(tiers.data ?? [])
 
   async function create(e: FormEvent) {
     e.preventDefault()
