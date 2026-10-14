@@ -49,15 +49,17 @@ export default function SeatCaps() {
           <p className="odz-muted">
             Old Guard counts Command inside it. A change applies to future moves only; nobody is demoted by it. It is logged.
           </p>
-          <Field label="Old Guard cap (Command included)" inputMode="numeric" value={og} onChange={(e) => setOg(e.target.value)} />
-          <Field label="Command cap" inputMode="numeric" value={cm} onChange={(e) => setCm(e.target.value)} />
+          <Field label="Old Guard cap (Command included)" inputMode="numeric" disabled={!caps.data} value={og} onChange={(e) => setOg(e.target.value)} />
+          <Field label="Command cap" inputMode="numeric" disabled={!caps.data} value={cm} onChange={(e) => setCm(e.target.value)} />
           {error && (
             <p role="alert" style={{ color: 'var(--alert)' }}>
               {error}
             </p>
           )}
           {saved && <p role="status">Saved.</p>}
-          <Button type="submit">Save caps</Button>
+          <Button type="submit" disabled={!caps.data}>
+            Save caps
+          </Button>
         </form>
       )}
     </Panel>

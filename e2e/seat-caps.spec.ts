@@ -96,6 +96,9 @@ test('Admin changes the caps from the Tiers screen; it is logged and a plain Mem
   const mem = await seedUser('member', 'seat-plain')
   await signIn(page, boss)
   await page.goto('/admin/tiers')
+  // The fields are disabled until the current caps have loaded; wait so the load cannot overwrite what is typed.
+  await expect(page.getByLabel('Old Guard cap (Command included)')).toBeEnabled()
+  await expect(page.getByLabel('Old Guard cap (Command included)')).not.toHaveValue('')
   await page.getByLabel('Old Guard cap (Command included)').fill('7')
   await page.getByLabel('Command cap').fill('9')
   await page.getByRole('button', { name: 'Save caps' }).click()
