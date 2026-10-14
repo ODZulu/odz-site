@@ -65,7 +65,8 @@ test('invite as Support: callsign-only setup, approval, sign in, and nothing gat
   await expect(page).toHaveURL(/\/hq$/)
   await page.goto('/roster')
   await expect(page.getByRole('link', { name: callsign })).toBeVisible()
-  await expect(page.getByText('Support', { exact: true }).first()).toBeVisible()
+  // The top bar mark is hidden at 360px; the roster row carries the badge.
+  await expect(page.locator('.odz-tier:visible', { hasText: 'Support' }).first()).toBeVisible()
 
   // Server side: no capabilities, no gated rows.
   const c = await asUser(email, PASSWORD)
