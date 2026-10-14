@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
-import { Field, Panel, Table, TierMark } from '../components'
+import { Field, Panel, SeatCounters, Table, TierMark } from '../components'
 import { filterRoster, sortRoster, type RosterMember } from '../lib/roster'
+import type { SeatCounts } from '../lib/seats'
 import { supabase } from '../lib/supabase'
 import { formatStampPhoenix } from '../lib/time'
 import { useLoad } from '../lib/useLoad'
@@ -19,6 +20,12 @@ export async function loadRoster(): Promise<RosterMember[]> {
 
 export default function Roster() {
   const roster = useLoad(loadRoster)
+  // Seat holders and roster managers only; anyone else gets a refusal and sees no panel.
+  const seats = useLoad(async () => {
+    const { data, error } = await supabase!.rpc('seat_counts')
+    if (error) return null
+    return (data as SeatCounts[])[0] ?? null
+  })
   const [query, setQuery] = useState('')
   const rows = filterRoster(roster.data ?? [], query)
 
@@ -36,6 +43,7 @@ export default function Roster() {
           onChange={(e) => setQuery(e.target.value)}
         />
       </div>
+      {seats.data && <SeatCounters counts={seats.data} />}
       <Panel title="Members">
         {roster.loading ? (
           <p className="odz-muted" role="status">

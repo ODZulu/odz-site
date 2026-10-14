@@ -11,6 +11,7 @@ import {
 } from '../../lib/admin'
 import { supabase } from '../../lib/supabase'
 import { ROLE_BASED_NOTE } from '../../lib/tiers'
+import SeatCaps from './SeatCaps'
 import { useLoad } from '../../lib/useLoad'
 
 type TierRow = {
@@ -199,6 +200,8 @@ export default function Tiers() {
           )
         })
       )}
+
+      <SeatCaps />
 
       <Panel title="Add tier">
         <form onSubmit={addTier} noValidate style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>

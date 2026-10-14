@@ -67,6 +67,8 @@ There is no service-role fallback against the hosted dev project: the service-ro
 
 * `e2e/support.spec.ts` (backend): a Support invite leads to a callsign-only setup (no legal name, date of birth or emergency contact), approval keeps the Support tier, and the account has no capabilities and reads no event details, minutes, documents or private rows; Support reads Traffic but cannot post; Command moves a Support account to Member from Admin > Members with a required note (setup re-opens, the move is logged with actor and note); Command and Old Guard are barred from Support moves, direct tier updates across the line are refused, and a plain Member cannot call the RPC.
 
+* `e2e/seat-caps.spec.ts` (backend): Command promotes until Old Guard is full, the next promotion is refused with "Old Guard is full: n/n" and nothing moves, the roster shows the counters and no vacancy, demoting frees the seat at once and the promotion then goes through; two simultaneous promotions into the last Command seat give exactly one success; Admin changes the caps from the Tiers screen (validated, logged with actor, old and new) and a plain Member is refused. The helpers open the caps to 99 whenever a Command account is seeded, so other suites are not limited by them.
+
 New tickets add their suites to `e2e/` and list them here.
 
 ## Failure artifacts

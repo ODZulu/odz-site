@@ -53,6 +53,15 @@ Apply files in filename order to the ODZ Supabase project (SQL editor or `supaba
 * `invites_prepare()`: an invite with no tier still defaults to the least senior **player** tier (Recruit).
 * Office-seat rejection for Support (designations) is built in MVA-220, which reads `tiers.role_based`.
 
+`20261014020000_seat_caps.sql` (MVA-234): Old Guard and Command seat caps, enforced in the database.
+* `seat_caps` (one row, 12 and 3): `old_guard_max` counts Old Guard and Command together (Command is part of Old Guard), `command_max` counts Command. Only an Admin changes them, through `set_seat_caps()`, logged in `settings_audit` (who, old, new); a change applies to future moves only. Any approved account may read the row.
+* `tiers.seat_group` (`old_guard` / `command`) says which tiers hold seats, so renaming a tier never breaks the rule. This migration sets it on the two existing tier rows (the only existing rows it touches; no member data).
+* `profiles_seat_cap()`: before insert/update trigger on `profiles` (fires after `profiles_guard`, so the Command release rule has already rewritten the target tier). Only a transition into a seat is checked, with one advisory lock so simultaneous promotions cannot both pass the cap. Errors read "Old Guard is full: 12/12" and "Command is full: 3/3". Approved and suspended accounts hold a seat; pending, removed (MVA-209) and deleted accounts do not, so removal and demotion free a seat at once. Covers roster edits, approvals, the SQL editor and bulk updates.
+* `seat_counts()`: counters for the roster page; seat holders, roster managers (`edit_roster`, `approve_members`) and Admin only.
+* Deploy check: if a tally is already over a cap the migration still applies (nothing is moved), writes a `seat_caps_over` row to `settings_audit` and prints a notice; promotion stays blocked until the count is under the cap.
+* Invites cannot carry Old Guard or Command (those tiers are not `invitable`; unchanged, now tested).
+* No function from an earlier migration is redefined.
+
 ## Dashboard settings this schema assumes (Auth)
 
 * Email confirmation OFF (no SMTP yet, MVA-200).
