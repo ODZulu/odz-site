@@ -34,7 +34,7 @@ begin
   if n <> 2 then raise exception 'FAIL: only Old Guard and Command hold seats (got %)', n; end if;
 
   insert into public.invites (code, tier_id)
-  select 'seatfake000000' || to_char(g, 'FM00'), t_recruit from generate_series(10, 18) g;
+  select 'seatfake0000000' || to_char(g, 'FM00'), t_recruit from generate_series(10, 18) g;
   insert into auth.users (id, email, aud, role, raw_user_meta_data) values
     (v_adm,  'adm@example.invalid',  'authenticated', 'authenticated', '{"invite_code":"seatfake000000010"}'),
     (v_cmd,  'cmd@example.invalid',  'authenticated', 'authenticated', '{"invite_code":"seatfake000000011"}'),
