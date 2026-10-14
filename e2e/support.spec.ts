@@ -60,7 +60,9 @@ test('invite as Support: callsign-only setup, approval, sign in, and nothing gat
   const priv = await admin().from('member_private').select('profile_id').eq('profile_id', found.data?.id)
   expect(priv.data).toHaveLength(0)
 
-  await signIn(page, { email, password: PASSWORD })
+  // The browser is still signed in from signup; a reload picks up the approval.
+  await page.reload()
+  await expect(page).toHaveURL(/\/hq$/)
   await page.goto('/roster')
   await expect(page.getByRole('link', { name: callsign })).toBeVisible()
   await expect(page.getByText('Support', { exact: true }).first()).toBeVisible()
