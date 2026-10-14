@@ -65,6 +65,8 @@ There is no service-role fallback against the hosted dev project: the service-ro
 
 * `e2e/removal.spec.ts` (backend): Admin removes a member from the roster page (reason required, separate confirm), private details are purged and the profile is marked removed; a removed member cannot sign in and an earlier session reads nothing; Command is not offered removal and the RPC refuses it, as it does anon and members; an Admin cannot remove themselves; authored traffic shows "Former member" after removal and after the permanent delete.
 
+* `e2e/support.spec.ts` (backend): a Support invite leads to a callsign-only setup (no legal name, date of birth or emergency contact), approval keeps the Support tier, and the account has no capabilities and reads no event details, minutes, documents or private rows; Support reads Traffic but cannot post; Command moves a Support account to Member from Admin > Members with a required note (setup re-opens, the move is logged with actor and note); Command and Old Guard are barred from Support moves, direct tier updates across the line are refused, and a plain Member cannot call the RPC.
+
 New tickets add their suites to `e2e/` and list them here.
 
 ## Failure artifacts
