@@ -42,6 +42,7 @@ values ('Support', (select coalesce(max(rank), 0) + 1 from public.tiers), true, 
 -- Invites: the default tier is the least senior player tier
 ------------------------------------------------------------------------------
 
+-- Copied from 20261011140000_admin_settings.sql (newest definition), with the "not role_based" default.
 create or replace function public.invites_prepare()
 returns trigger
 language plpgsql set search_path = ''
@@ -71,10 +72,14 @@ $$;
 
 alter table public.profile_audit add column note text;
 
+-- Copied from 20261011160000_profiles_directory.sql (the newest definition; 20261013190000 does
+-- not redefine it), plus the tier note on the 'tier' insert.
 create or replace function public.profiles_audit()
 returns trigger
 language plpgsql security definer set search_path = ''
 as $$
+declare
+  fields text;
 begin
   if new.status is distinct from old.status then
     insert into public.profile_audit (profile_id, actor_id, event, old_value, new_value)
@@ -96,11 +101,25 @@ begin
     values (new.id, auth.uid(), 'admin', old.is_admin::text, new.is_admin::text);
   end if;
 
+  select string_agg(f.name, ',' order by f.name) into fields
+  from (values
+    ('callsign', new.callsign is distinct from old.callsign),
+    ('display_name', new.display_name is distinct from old.display_name),
+    ('role_note', new.role_note is distinct from old.role_note),
+    ('bio', new.bio is distinct from old.bio)
+  ) as f(name, changed)
+  where f.changed;
+  -- Setting the callsign during first-login setup is not an edit.
+  if fields is not null and not (old.setup_complete is false and new.setup_complete is true) then
+    insert into public.profile_audit (profile_id, actor_id, event, old_value, new_value)
+    values (new.id, auth.uid(), 'profile', null, fields);
+  end if;
+
   return null;
 end;
 $$;
 
--- Same as 20261013190000 plus the tier-note suffix on tier rows.
+-- Copied from 20261013190000_member_removal.sql (newest definition), plus the tier-note suffix on tier rows.
 create or replace function public.list_audit(p_limit integer default 25, p_offset integer default 0)
 returns table (at timestamptz, actor text, kind text, event text, target text, detail text, total bigint)
 language plpgsql stable security definer set search_path = ''
@@ -159,7 +178,7 @@ $$;
 ------------------------------------------------------------------------------
 -- Guard: crossing the player/Support line only through move_support_tier()
 ------------------------------------------------------------------------------
--- Same as 20261013190000 plus the role_based check inside the signed-in block.
+-- Copied from 20261013190000_member_removal.sql (newest definition), plus the role_based check inside the signed-in block.
 
 create or replace function public.profiles_guard()
 returns trigger
@@ -185,6 +204,8 @@ begin
     raise exception 'profile id cannot be changed' using errcode = '42501';
   end if;
 
+  -- Removed accounts cannot be edited or reinstated by a signed-in caller. Re-onboarding is a
+  -- fresh invite. (Callers with no JWT, such as the SQL editor, stay trusted as elsewhere.)
   if old.status = 'removed' and auth.uid() is not null then
     raise exception 'account was removed' using errcode = '42501';
   end if;
