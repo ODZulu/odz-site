@@ -1,9 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { Chip, ConfirmAction, Panel, Textarea } from '../components'
-import { adminMessage } from '../lib/admin'
 import { counter } from '../lib/roster'
-import { REASON_MAX, removalBlock, validateReason, type RemovalTarget } from '../lib/removal'
+import { REASON_MAX, removalBlock, removalMessage, validateReason, type RemovalTarget } from '../lib/removal'
 import { supabase } from '../lib/supabase'
 
 type Props = {
@@ -30,7 +29,7 @@ export function RemoveMemberPanel({ callsign, target, selfId, approvedAdmins }: 
     setError(null)
     const { error: err } = await supabase.rpc('remove_member', { p_profile: target.id, p_reason: reason.trim() })
     if (err) {
-      setError(adminMessage(err))
+      setError(removalMessage(err))
       return
     }
     void navigate('/roster', { replace: true })
@@ -51,6 +50,7 @@ export function RemoveMemberPanel({ callsign, target, selfId, approvedAdmins }: 
             maxLength={REASON_MAX}
             onChange={(e) => setReason(e.target.value)}
             hint={counter(reason, REASON_MAX)}
+            error={invalid ?? undefined}
           />
           {error && (
             <p role="alert" style={{ color: 'var(--alert)' }}>

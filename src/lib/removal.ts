@@ -1,5 +1,7 @@
 /** Member removal (MVA-209): the rules the screens check before asking the database, which enforces them again. */
 
+import { adminMessage } from './admin'
+
 export const REASON_MIN = 3
 export const REASON_MAX = 500
 
@@ -34,6 +36,19 @@ export function removalBlock(opts: {
   if (target.id === selfId) return 'You cannot remove yourself.'
   if (target.is_admin && target.status === 'approved' && approvedAdmins <= 1) return 'There must always be one Admin.'
   return null
+}
+
+/**
+ * Translates a remove_member / delete_removed_member refusal. PostgREST reports a missing
+ * function (migration not applied) as a schema-cache lookup failure; that gets its own message
+ * so it is never mistaken for a genuine permission refusal (MVA-239).
+ */
+export function removalMessage(error: { message?: string } | null | undefined): string {
+  const m = error?.message ?? ''
+  if (/schema cache|could not find the function/i.test(m)) {
+    return 'Removal is not available on this database; the migration may be missing.'
+  }
+  return adminMessage(error)
 }
 
 /** Hard delete asks for the callsign typed back, on top of the confirm step. Case-sensitive, as shown. */
