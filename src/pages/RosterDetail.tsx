@@ -6,8 +6,9 @@ import type { ServiceEntry } from '../lib/service'
 import { supabase } from '../lib/supabase'
 import { formatStampPhoenix } from '../lib/time'
 import { useLoad } from '../lib/useLoad'
+import { MemberDesignationsPanel } from './MemberDesignationsPanel'
 import { RemoveMemberPanel } from './RemoveMemberPanel'
-import { loadRoster } from './Roster'
+import { loadDesignations, loadRoster } from './Roster'
 import { ServiceRecordPanel } from './ServiceRecordPanel'
 
 type PrivateRow = {
@@ -44,6 +45,8 @@ export default function RosterDetail() {
     if (rec.error || hist.error) throw new Error('service')
     return { doe: (rec.data as { doe: string | null } | null)?.doe ?? null, entries: (hist.data ?? []) as ServiceEntry[] }
   }, [member?.id, canViewService])
+
+  const designations = useLoad(loadDesignations)
 
   const priv = useLoad<PrivateRow | null>(async () => {
     if (!supabase || !member || !showPrivate) return null
@@ -108,6 +111,15 @@ export default function RosterDetail() {
         <Panel title="Bio">
           <p style={{ whiteSpace: 'pre-wrap' }}>{member.bio ?? <span className="odz-muted">Nothing here yet.</span>}</p>
         </Panel>
+        {designations.data && (
+          <MemberDesignationsPanel
+            profileId={member.id}
+            catalog={designations.data.catalog}
+            assignments={designations.data.assignments}
+            canEdit={can('edit_roster')}
+            onChange={() => void designations.reload()}
+          />
+        )}
         {canViewService && service.data && (
           <ServiceRecordPanel
             profileId={member.id}

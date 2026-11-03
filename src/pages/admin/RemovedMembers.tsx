@@ -1,8 +1,7 @@
 import { useState } from 'react'
 import { Button, ConfirmAction, Field, Panel, Table, Textarea } from '../../components'
-import { adminMessage } from '../../lib/admin'
 import { formatStamp } from '../../lib/format'
-import { confirmsCallsign, REASON_MAX, validateReason } from '../../lib/removal'
+import { confirmsCallsign, REASON_MAX, removalMessage, validateReason } from '../../lib/removal'
 import { counter } from '../../lib/roster'
 import { supabase } from '../../lib/supabase'
 import { useLoad } from '../../lib/useLoad'
@@ -44,7 +43,7 @@ export default function RemovedMembers() {
     setError(null)
     const { error: err } = await supabase.rpc('delete_removed_member', { p_profile: target.id, p_reason: reason.trim() })
     if (err) {
-      setError(adminMessage(err))
+      setError(removalMessage(err))
       return
     }
     close()

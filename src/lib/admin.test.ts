@@ -105,6 +105,12 @@ describe('adminMessage', () => {
     expect(adminMessage({ message: 'invalid_reason' })).toMatch(/reason/)
     expect(adminMessage({ message: 'account was removed' })).toMatch(/removed/)
   })
+  it('translates the designation refusals', () => {
+    expect(adminMessage({ message: 'not_eligible_tier' })).toMatch(/Command and Old Guard/)
+    expect(adminMessage({ message: 'designation_full' })).toMatch(/maximum number of holders/)
+    expect(adminMessage({ message: 'already_assigned' })).toMatch(/already holds/)
+    expect(adminMessage({ message: 'not_assigned' })).toMatch(/does not hold/)
+  })
   it('translates the service-record refusals', () => {
     expect(adminMessage({ message: 'invalid_date' })).toMatch(/valid date/)
     expect(adminMessage({ message: 'invalid_title' })).toMatch(/1 to 80 characters/)

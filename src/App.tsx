@@ -11,6 +11,7 @@ import Members from './pages/admin/Members'
 import PendingQueue from './pages/admin/Pending'
 import Tiers from './pages/admin/Tiers'
 import { Denied, Pending } from './pages/Holding'
+import Designations from './pages/Designations'
 import DocumentDetail from './pages/DocumentDetail'
 import DocumentEdit from './pages/DocumentEdit'
 import Documents from './pages/Documents'
@@ -71,6 +72,7 @@ export default function App() {
           <Route path="/hq" element={<Hq />} />
           <Route path="/roster" element={<Roster />} />
           <Route path="/roster/:callsign" element={<RosterDetail />} />
+          <Route path="/designations" element={<Designations />} />
           <Route path="/me" element={<Me />} />
           <Route path="/notifications" element={<Notifications />} />
           <Route path="/settings/notifications" element={<NotificationSettings />} />
