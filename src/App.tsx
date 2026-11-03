@@ -4,6 +4,7 @@ import { AppShell, GateLayout, PublicFrame } from './components'
 import { useAuth } from './auth/AuthProvider'
 import { homeFor } from './lib/access'
 import Calendar from './pages/Calendar'
+import AgendaPage from './pages/AgendaPage'
 import AdminLayout from './pages/admin/AdminLayout'
 import Audit from './pages/admin/Audit'
 import Invites from './pages/admin/Invites'
@@ -91,6 +92,7 @@ export default function App() {
           <Route path="/designations" element={<Designations />} />
           <Route path="/motions" element={<Motions />} />
           <Route path="/motions/:id" element={<MotionDetail />} />
+          <Route path="/agenda/:eventId" element={<AgendaPage />} />
           <Route path="/me" element={<Me />} />
           <Route path="/minutes" element={<Minutes />} />
           <Route path="/minutes/new" element={<MinutesEdit />} />
