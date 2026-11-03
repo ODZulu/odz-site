@@ -23,7 +23,8 @@ jobs:
   # CI stack and are masked; no repository secrets are used.
   e2e:
     if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
+    # Pinned: ubuntu-latest moved to Ubuntu 26, where `playwright install --with-deps chromium` fails.
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
