@@ -47,4 +47,9 @@ describe('RemoveMemberPanel', () => {
   it('offers nothing for a member who is already removed', () => {
     expect(render({ target: { id: 't1', is_admin: false, status: 'removed' } })).toContain('already removed')
   })
+
+  it('explains the disabled button next to the reason field before any submit attempt', () => {
+    const html = render()
+    expect(html).toContain('Give a reason of at least 3 characters.')
+  })
 })

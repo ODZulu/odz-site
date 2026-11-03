@@ -1,5 +1,7 @@
-import patch from '../assets/logos/odz-logo-patch.png'
-import { ButtonLink } from '../components'
+// Lossless copy of the general patch without its transparent padding, so both marks fill the same square.
+import generalPatch from '../assets/logos/odz-logo-general-patch-trimmed.webp'
+import patch from '../assets/logos/odz-logo-patch.webp'
+import { ButtonLink, LogoRotator } from '../components'
 
 /**
  * Public splash (`/`). Login only: no sign-up, join or request-access button and no description
@@ -13,12 +15,12 @@ export default function Landing() {
         <span className="odz-label">Est. 2015</span>
       </div>
       <div className="odz-splash__main">
-        <img
+        <LogoRotator
           className="odz-splash__patch"
-          src={patch}
-          alt="Operational Detachment Zulu seal"
-          width={320}
-          height={320}
+          logos={[
+            { src: patch, alt: 'Operational Detachment Zulu seal' },
+            { src: generalPatch, alt: 'Operational Detachment Zulu general patch' },
+          ]}
         />
         <div>
           <span className="odz-rocker">OPERATOR HUB</span>

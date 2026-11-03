@@ -105,6 +105,22 @@ describe('adminMessage', () => {
     expect(adminMessage({ message: 'invalid_reason' })).toMatch(/reason/)
     expect(adminMessage({ message: 'account was removed' })).toMatch(/removed/)
   })
+  it('translates the designation refusals', () => {
+    expect(adminMessage({ message: 'not_eligible_tier' })).toMatch(/Command and Old Guard/)
+    expect(adminMessage({ message: 'designation_full' })).toMatch(/maximum number of holders/)
+    expect(adminMessage({ message: 'already_assigned' })).toMatch(/already holds/)
+    expect(adminMessage({ message: 'not_assigned' })).toMatch(/does not hold/)
+  })
+  it('translates the service-record refusals', () => {
+    expect(adminMessage({ message: 'invalid_date' })).toMatch(/valid date/)
+    expect(adminMessage({ message: 'invalid_title' })).toMatch(/1 to 80 characters/)
+  })
+  it('translates the retire and unretire refusals', () => {
+    expect(adminMessage({ message: 'cannot_retire_self' })).toMatch(/retire yourself/)
+    expect(adminMessage({ message: 'not_active' })).toMatch(/active member/)
+    expect(adminMessage({ message: 'not_retired' })).toMatch(/not retired/)
+    expect(adminMessage({ message: 'invalid_tier' })).toMatch(/tier/)
+  })
   it('never passes unknown text through', () => {
     expect(adminMessage({ message: 'Failing row contains (1990-01-01)' })).toBe('That change was refused.')
     expect(adminMessage(null)).toBe('That change was refused.')

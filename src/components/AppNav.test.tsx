@@ -18,6 +18,8 @@ describe('AppNav', () => {
     for (const label of ['MISSIONS', 'ATLAS', 'AAR']) expect(html).not.toContain(label)
     // The admin tab only appears for accounts with access.
     expect(html).not.toContain('ADMIN')
+    // Designations (MVA-220) is Old Guard/Command/edit_roster only; the idle context has none of those.
+    expect(html).not.toContain('DESIGNATIONS')
   })
 
   it('marks the active tab with aria-current', () => {

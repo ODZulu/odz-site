@@ -69,6 +69,12 @@ There is no service-role fallback against the hosted dev project: the service-ro
 
 * `e2e/seat-caps.spec.ts` (backend): Command promotes until Old Guard is full, the next promotion is refused with "Old Guard is full: n/n" and nothing moves, the roster shows the counters and no vacancy, demoting frees the seat at once and the promotion then goes through; two simultaneous promotions into the last Command seat give exactly one success; Admin changes the caps from the Tiers screen (validated, logged with actor, old and new) and a plain Member is refused. The helpers open the caps to 99 whenever a Command account is seeded, so other suites are not limited by them.
 
+* `e2e/retired.spec.ts` (backend): Command retires a Member from the roster page (reason optional) and the roster moves them to a separate Retired section; the retired member signs in to a limited home (`/retired`) with Traffic and notifications, is sent back from HQ, the roster, minutes, documents, designations and Admin, and the API returns no event details, minutes, documents or other members' private rows; retiring an Old Guard member lists their designations in the warning first, vacates them, frees the seat for a promotion at the cap, and returning to the full seat is refused until Command picks another tier; a plain Member is offered no retire action and the RPC refuses them.
+
+* `e2e/reinstate.spec.ts` (backend): Admin removes a member then reinstates them from Admin > Members (a reason is required, with visible helper text, and a separate confirm step); the same password works again and the member lands on the setup form; the audit tab shows it; a removed Old Guard member returns as Member and the screen says the seat is not restored; Command and Members are refused by the RPC, as is an active account and a short reason.
+
+* `e2e/password.spec.ts` (backend): a member changes their password on /me (current, new, confirm, with show/hide) and the three fields clear; a second session signed in earlier can no longer refresh, the old password fails and the new one works, and the audit row holds no secret; a wrong current password shows one generic message and changes nothing, and five wrong attempts turn the form off for the browser session; 11 characters, the same password and a mismatch are rejected before anything is sent, with the password-manager autocomplete hints; it works for Support and retired accounts, and a pending account never reaches it. Also checked at 360px.
+
 New tickets add their suites to `e2e/` and list them here.
 
 ## Failure artifacts

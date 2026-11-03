@@ -13,6 +13,7 @@ import {
 } from '../lib/roster'
 import { formatPhoneInput, normalizeAllergies, normalizePhone } from '../lib/phone'
 import { supabase } from '../lib/supabase'
+import { ChangePasswordPanel } from './ChangePasswordPanel'
 import { setupErrorField, validatePrivate, type PrivateErrors, type PrivateValues } from '../lib/validate'
 import { useLoad } from '../lib/useLoad'
 
@@ -114,6 +115,7 @@ export default function Me() {
           </form>
         </Panel>
         <PrivateDetails uid={uid} />
+        <ChangePasswordPanel />
       </div>
     </>
   )
