@@ -1,4 +1,5 @@
-import generalPatch from '../assets/logos/odz-logo-general-patch.webp'
+// Lossless copy of the general patch without its transparent padding, so both marks fill the same square.
+import generalPatch from '../assets/logos/odz-logo-general-patch-trimmed.webp'
 import patch from '../assets/logos/odz-logo-patch.webp'
 import { ButtonLink, LogoRotator } from '../components'
 

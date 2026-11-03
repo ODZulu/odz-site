@@ -90,6 +90,32 @@ test.describe('landing hero logos (MVA-244)', () => {
     expect(after).toEqual(before)
   })
 
+  test('both marks render at the same size on the same round backing at 360px and desktop (MVA-250)', async ({ page }) => {
+    for (const size of [{ width: 360, height: 800 }, { width: 1280, height: 800 }]) {
+      await page.setViewportSize(size)
+      await page.goto('/')
+      const a = await page.getByAltText(seal).boundingBox()
+      const b = await page.getByAltText(general).boundingBox()
+      expect(a && b).toBeTruthy()
+      expect(Math.abs(a!.width - b!.width)).toBeLessThanOrEqual(2)
+      expect(Math.abs(a!.height - b!.height)).toBeLessThanOrEqual(2)
+      expect(Math.abs(a!.width - a!.height)).toBeLessThanOrEqual(2)
+      // Both marks are loaded square (the general patch is the trimmed copy), so object-contain fills the box equally.
+      for (const l of [page.getByAltText(seal), page.getByAltText(general)]) {
+        await expect.poll(() => l.evaluate((el) => (el as HTMLImageElement).naturalWidth === (el as HTMLImageElement).naturalHeight)).toBe(true)
+      }
+      const backing = await page.getByAltText(seal).evaluate((el) => {
+        const cs = getComputedStyle(el.parentElement!)
+        return { bg: cs.backgroundColor, radius: cs.borderTopLeftRadius }
+      })
+      expect(backing.bg).toBe('rgb(255, 255, 255)')
+      expect(parseFloat(backing.radius)).toBeGreaterThan(0)
+      // Both marks share the one backing element.
+      const same = await page.getByAltText(seal).evaluate((el, alt) => el.parentElement === document.querySelector(`img[alt="${alt}"]`)?.parentElement, general)
+      expect(same).toBe(true)
+    }
+  })
+
   test('fits at 360px with no horizontal scroll', async ({ page }) => {
     await page.setViewportSize({ width: 360, height: 800 })
     await page.goto('/')

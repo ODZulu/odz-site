@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { LOGO_FADE_MS, useLogoRotation } from '../lib/logoRotation'
+import { useRef, useState, type CSSProperties } from 'react'
+import { logoStyle, reducedMotionPreferred, useLogoRotation } from '../lib/logoRotation'
 
 export type RotatingLogo = { src: string; alt: string }
 
@@ -9,18 +9,28 @@ type Props = {
 }
 
 /**
- * Crossfades between the team's marks (MVA-244) inside a fixed box sized by `className`, so
- * rotating never shifts the layout. Both images are always in the DOM (never conditionally
+ * Crossfades between the team's marks (MVA-244, MVA-250) inside a fixed box sized by `className`, so
+ * rotating never shifts the layout. Every mark sits in the same square, object-contain, on the same
+ * round white backing (the general patch has a black ring that would vanish on the dark page);
+ * artwork is never stretched, cropped or recolored (MVA-139). Both images are always in the DOM (never conditionally
  * rendered) so the browser loads them together. A mark that fails to load is never shown; the
  * other one stays up in its place instead of a broken-image icon.
  */
 export function LogoRotator({ logos, className }: Props) {
   const active = useLogoRotation(logos.length)
   const [failed, setFailed] = useState<ReadonlySet<number>>(() => new Set())
+  const reduced = useRef(reducedMotionPreferred()).current
   const shown = failed.has(active) ? logos.findIndex((_, i) => !failed.has(i)) : active
+  // The first mark appears as the page loads without animating; every swap after that rotates in.
+  const [seen, setSeen] = useState(shown)
+  const [swapped, setSwapped] = useState(false)
+  if (seen !== shown) {
+    setSeen(shown)
+    setSwapped(true)
+  }
 
   return (
-    <div className={className} style={{ position: 'relative' }}>
+    <div className={`odz-logo-disc ${className ?? ''}`.trim()} style={{ position: 'relative' }}>
       {logos.map((logo, i) => (
         <img
           key={logo.src}
@@ -34,8 +44,7 @@ export function LogoRotator({ logos, className }: Props) {
             width: '100%',
             height: '100%',
             objectFit: 'contain',
-            opacity: i === shown ? 1 : 0,
-            transition: `opacity ${LOGO_FADE_MS}ms ease`,
+            ...(logoStyle(i === shown, reduced, swapped) as CSSProperties),
           }}
         />
       ))}

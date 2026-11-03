@@ -23,4 +23,11 @@ describe('LogoRotator', () => {
     expect(opaque).toHaveLength(1)
     expect(hidden).toHaveLength(1)
   })
+
+  it('puts every mark on the same round white backing at the same size (MVA-250)', () => {
+    const html = renderToStaticMarkup(<LogoRotator logos={logos} />)
+    expect(html).toContain('odz-logo-disc')
+    const sizes = html.match(/width:100%;height:100%;object-fit:contain/g) ?? []
+    expect(sizes).toHaveLength(2)
+  })
 })
