@@ -36,6 +36,17 @@ export async function loadDesignations(): Promise<{ catalog: Designation[]; assi
   return { catalog: catalog.data as Designation[], assignments: assignments.data as MemberDesignation[] }
 }
 
+/** Retired members (MVA-238): readable by approved members, listed apart from the active roster. */
+export async function loadRetired(): Promise<RosterMember[]> {
+  const { data, error } = await supabase!
+    .from('profiles')
+    .select('id,callsign,display_name,role_note,bio,joined_at,tier:tiers(name,rank)')
+    .eq('status', 'retired')
+    .not('callsign', 'is', null)
+  if (error) throw new Error('retired')
+  return sortRoster(data as unknown as RosterMember[])
+}
+
 /** Approved members only (RLS). The query asks for approved profiles with a callsign. */
 export async function loadRoster(): Promise<RosterMember[]> {
   const { data, error } = await supabase!
@@ -51,6 +62,7 @@ export default function Roster() {
   const { isAdmin, can, tierName } = useAuth()
   const canCompareSeniority = isAdmin || can('edit_roster') || tierName === 'Old Guard' || tierName === 'Command'
   const roster = useLoad(loadRoster)
+  const retired = useLoad(loadRetired)
   // Seat holders and roster managers only; anyone else gets a refusal and sees no panel.
   const seats = useLoad(async () => {
     const { data, error } = await supabase!.rpc('seat_counts')
@@ -133,6 +145,22 @@ export default function Roster() {
           />
         )}
       </Panel>
+      {(retired.data ?? []).length > 0 && (
+        <Panel title={`Retired (${retired.data?.length})`}>
+          <Table
+            rows={retired.data ?? []}
+            rowKey={(r) => r.id}
+            columns={[
+              {
+                header: 'Callsign',
+                kind: 'cs',
+                render: (r) => <Link to={`/roster/${encodeURIComponent(r.callsign)}`}>{r.callsign}</Link>,
+              },
+              { header: 'Was', render: (r) => (r.tier ? <TierMark tier={r.tier.name} /> : '-') },
+            ]}
+          />
+        </Panel>
+      )}
     </>
   )
 }

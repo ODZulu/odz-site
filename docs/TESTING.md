@@ -69,6 +69,8 @@ There is no service-role fallback against the hosted dev project: the service-ro
 
 * `e2e/seat-caps.spec.ts` (backend): Command promotes until Old Guard is full, the next promotion is refused with "Old Guard is full: n/n" and nothing moves, the roster shows the counters and no vacancy, demoting frees the seat at once and the promotion then goes through; two simultaneous promotions into the last Command seat give exactly one success; Admin changes the caps from the Tiers screen (validated, logged with actor, old and new) and a plain Member is refused. The helpers open the caps to 99 whenever a Command account is seeded, so other suites are not limited by them.
 
+* `e2e/retired.spec.ts` (backend): Command retires a Member from the roster page (reason optional) and the roster moves them to a separate Retired section; the retired member signs in to a limited home (`/retired`) with Traffic and notifications, is sent back from HQ, the roster, minutes, documents, designations and Admin, and the API returns no event details, minutes, documents or other members' private rows; retiring an Old Guard member lists their designations in the warning first, vacates them, frees the seat for a promotion at the cap, and returning to the full seat is refused until Command picks another tier; a plain Member is offered no retire action and the RPC refuses them.
+
 New tickets add their suites to `e2e/` and list them here.
 
 ## Failure artifacts

@@ -21,7 +21,8 @@ const PAGE = 10
 
 /** Full traffic list, paged. write_traffic holders can post, pin and archive (no hard delete). */
 export default function Traffic() {
-  const { can } = useAuth()
+  const { can, profile } = useAuth()
+  const home = profile?.status === 'retired' ? '/retired' : '/hq'
   const [page, setPage] = useState(0)
   const feed = useLoad(() => loadTraffic(PAGE, page * PAGE), [page])
   const [form, setForm] = useState({ title: '', body: '', pinned: false })
@@ -63,7 +64,7 @@ export default function Traffic() {
   return (
     <>
       <p style={{ marginBottom: '0.5rem' }}>
-        <Link to="/hq">HQ</Link>
+        <Link to={home}>{profile?.status === 'retired' ? 'Home' : 'HQ'}</Link>
       </p>
       <h1 className="odz-title" style={{ marginBottom: '1rem' }}>
         Traffic

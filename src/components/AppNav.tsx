@@ -5,7 +5,16 @@ import { navItems } from '../nav'
 
 /** Top nav strip on desktop; fixed bottom tab bar below 720px (CSS only). */
 export function AppNav() {
-  const { capabilities, isAdmin, can, tierName } = useAuth()
+  const { capabilities, isAdmin, can, tierName, profile } = useAuth()
+  if (profile?.status === 'retired') {
+    // Retired accounts (MVA-238) reach only their own home and Traffic; the database denies the rest anyway.
+    return (
+      <nav className="odz-nav" aria-label="Main">
+        <NavLink to="/retired">HOME</NavLink>
+        <NavLink to="/traffic">TRAFFIC</NavLink>
+      </nav>
+    )
+  }
   const showAdmin = visibleSections(capabilities, isAdmin).length > 0
   // The designations page is open to Old Guard and Command even with no capability of their own
   // (same three-way check as the database); this is a convenience hide, not the access control.

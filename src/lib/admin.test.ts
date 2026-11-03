@@ -115,6 +115,12 @@ describe('adminMessage', () => {
     expect(adminMessage({ message: 'invalid_date' })).toMatch(/valid date/)
     expect(adminMessage({ message: 'invalid_title' })).toMatch(/1 to 80 characters/)
   })
+  it('translates the retire and unretire refusals', () => {
+    expect(adminMessage({ message: 'cannot_retire_self' })).toMatch(/retire yourself/)
+    expect(adminMessage({ message: 'not_active' })).toMatch(/active member/)
+    expect(adminMessage({ message: 'not_retired' })).toMatch(/not retired/)
+    expect(adminMessage({ message: 'invalid_tier' })).toMatch(/tier/)
+  })
   it('never passes unknown text through', () => {
     expect(adminMessage({ message: 'Failing row contains (1990-01-01)' })).toBe('That change was refused.')
     expect(adminMessage(null)).toBe('That change was refused.')
