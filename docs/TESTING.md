@@ -71,6 +71,8 @@ There is no service-role fallback against the hosted dev project: the service-ro
 
 * `e2e/retired.spec.ts` (backend): Command retires a Member from the roster page (reason optional) and the roster moves them to a separate Retired section; the retired member signs in to a limited home (`/retired`) with Traffic and notifications, is sent back from HQ, the roster, minutes, documents, designations and Admin, and the API returns no event details, minutes, documents or other members' private rows; retiring an Old Guard member lists their designations in the warning first, vacates them, frees the seat for a promotion at the cap, and returning to the full seat is refused until Command picks another tier; a plain Member is offered no retire action and the RPC refuses them.
 
+* `e2e/reinstate.spec.ts` (backend): Admin removes a member then reinstates them from Admin > Members (a reason is required, with visible helper text, and a separate confirm step); the same password works again and the member lands on the setup form; the audit tab shows it; a removed Old Guard member returns as Member and the screen says the seat is not restored; Command and Members are refused by the RPC, as is an active account and a short reason.
+
 New tickets add their suites to `e2e/` and list them here.
 
 ## Failure artifacts
