@@ -47,7 +47,7 @@ test('Command sets DOE and adds, edits and deletes entries without leaving the p
   // op" (2016) renders before "Road to Rostov" (2015).
   await page.locator('li').filter({ hasText: 'Road to Rostov' }).getByRole('button', { name: 'Edit' }).click()
   await page.getByLabel('Mission or event name').fill('Road to Rostov (corrected)')
-  await page.getByRole('button', { name: 'Save' }).click()
+  await page.getByRole('button', { name: 'Save', exact: true }).click()
   await expect(page.getByText('Road to Rostov (corrected)')).toBeVisible()
 
   // Delete it; one mission remains.
@@ -67,6 +67,8 @@ test("a plain Member sees their own record read-only, and cannot see someone els
   await page.getByLabel('DOE').fill('2018-01-01')
   await page.getByRole('button', { name: 'Save DOE' }).click()
   await expect(page.getByText('2018')).toBeVisible()
+  await page.getByRole('button', { name: 'Sign out' }).click()
+  await expect(page.getByRole('button', { name: 'Sign out' })).toHaveCount(0)
 
   await signIn(page, mem)
   await memberPage(page, mem)
@@ -89,6 +91,9 @@ test('Old Guard (a seat holder with no edit_roster) can compare seniority on the
   await memberPage(page, target)
   await page.getByLabel('DOE').fill('2016-05-01')
   await page.getByRole('button', { name: 'Save DOE' }).click()
+  await expect(page.getByText('2016')).toBeVisible()
+  await page.getByRole('button', { name: 'Sign out' }).click()
+  await expect(page.getByRole('button', { name: 'Sign out' })).toHaveCount(0)
 
   await signIn(page, og)
   await page.goto('/roster')

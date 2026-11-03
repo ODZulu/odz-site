@@ -20,7 +20,7 @@ begin
   select id into t_recruit from public.tiers where name = 'Recruit';
 
   insert into public.invites (code, tier_id)
-  select 'svcfake00000000' || to_char(g, 'FM00'), t_recruit from generate_series(10, 15) g;
+  select 'svcfake0000000' || to_char(g, 'FM00'), t_recruit from generate_series(10, 15) g;
   insert into auth.users (id, email, aud, role, raw_user_meta_data) values
     (v_adm,  'svc-adm@example.invalid',  'authenticated', 'authenticated', '{"invite_code":"svcfake000000010"}'),
     (v_cmd,  'svc-cmd@example.invalid',  'authenticated', 'authenticated', '{"invite_code":"svcfake000000011"}'),
