@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { Link } from 'react-router'
 import { useAuth } from '../auth/AuthProvider'
 import { Button, Chip, ConfirmAction, Field, Panel, Select, Textarea } from '../components'
 import { RsvpToggle } from '../components/RsvpPanel'
@@ -108,6 +109,11 @@ export default function Calendar() {
             )}
             {e.description && <Markdown source={e.description} />}
           </details>
+        )}
+        {detail && e.event_type === 'Meeting' && (
+          <p style={{ margin: '0.5rem 0' }}>
+            <Link to={`/agenda/${e.id}`}>Agenda</Link>
+          </p>
         )}
         {detail && <RsvpToggle event={e} />}
         {write && (
