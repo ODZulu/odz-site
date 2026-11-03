@@ -6,6 +6,7 @@ import type { ServiceEntry } from '../lib/service'
 import { supabase } from '../lib/supabase'
 import { formatStampPhoenix } from '../lib/time'
 import { useLoad } from '../lib/useLoad'
+import { ChangePasswordPanel } from './ChangePasswordPanel'
 import { ServiceRecordPanel } from './ServiceRecordPanel'
 
 /**
@@ -66,6 +67,8 @@ export default function RetiredHome() {
         {uid && service.data && (
           <ServiceRecordPanel profileId={uid} doe={service.data.doe} entries={service.data.entries} canEdit={false} onChange={() => {}} />
         )}
+
+        <ChangePasswordPanel />
       </div>
     </>
   )
