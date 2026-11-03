@@ -73,6 +73,8 @@ There is no service-role fallback against the hosted dev project: the service-ro
 
 * `e2e/reinstate.spec.ts` (backend): Admin removes a member then reinstates them from Admin > Members (a reason is required, with visible helper text, and a separate confirm step); the same password works again and the member lands on the setup form; the audit tab shows it; a removed Old Guard member returns as Member and the screen says the seat is not restored; Command and Members are refused by the RPC, as is an active account and a short reason.
 
+* `e2e/password.spec.ts` (backend): a member changes their password on /me (current, new, confirm, with show/hide) and the three fields clear; a second session signed in earlier can no longer refresh, the old password fails and the new one works, and the audit row holds no secret; a wrong current password shows one generic message and changes nothing, and five wrong attempts turn the form off for the browser session; 11 characters, the same password and a mismatch are rejected before anything is sent, with the password-manager autocomplete hints; it works for Support and retired accounts, and a pending account never reaches it. Also checked at 360px.
+
 New tickets add their suites to `e2e/` and list them here.
 
 ## Failure artifacts
