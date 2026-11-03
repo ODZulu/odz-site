@@ -1,11 +1,19 @@
+import { useEffect, useState } from 'react'
 import { NavLink } from 'react-router'
 import { useAuth } from '../auth/AuthProvider'
 import { visibleSections } from '../lib/admin'
+import { supabase } from '../lib/supabase'
 import { navItems } from '../nav'
 
 /** Top nav strip on desktop; fixed bottom tab bar below 720px (CSS only). */
 export function AppNav() {
   const { capabilities, isAdmin, can, tierName, profile } = useAuth()
+  const [treasury, setTreasury] = useState(false)
+  // The Treasury tab appears only when the database says the caller has access (it ships dark: Admin only).
+  useEffect(() => {
+    if (!supabase || !profile || profile.status !== 'approved') return
+    void supabase.rpc('treasury_access').then(({ data }) => setTreasury(data === 'own' || data === 'full'))
+  }, [profile])
   if (profile?.status === 'retired') {
     // Retired accounts (MVA-238) reach only their own home and Traffic; the database denies the rest anyway.
     return (
@@ -30,6 +38,7 @@ export function AppNav() {
       {showDesignations && <NavLink to="/motions">MOTIONS</NavLink>}
       {(can("read_minutes") || can("write_minutes")) && <NavLink to="/minutes">MINUTES</NavLink>}
       {(can("read_documents") || can("publish_documents")) && <NavLink to="/documents">DOCS</NavLink>}
+      {treasury && <NavLink to="/treasury">TREASURY</NavLink>}
       {showAdmin && <NavLink to="/admin">ADMIN</NavLink>}
     </nav>
   )
