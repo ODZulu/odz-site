@@ -1,11 +1,21 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
-import { Field, Panel, SeatCounters, Table, TierMark } from '../components'
+import { DesignationBadges, Field, Panel, Select, SeatCounters, Table, TierMark } from '../components'
+import { designationNamesFor, filterByDesignation, type Designation, type MemberDesignation } from '../lib/designations'
 import { filterRoster, sortRoster, type RosterMember } from '../lib/roster'
 import type { SeatCounts } from '../lib/seats'
 import { supabase } from '../lib/supabase'
 import { formatStampPhoenix } from '../lib/time'
 import { useLoad } from '../lib/useLoad'
+
+export async function loadDesignations(): Promise<{ catalog: Designation[]; assignments: MemberDesignation[] }> {
+  const [catalog, assignments] = await Promise.all([
+    supabase!.from('designations').select('id,name,description,capability_key,office_seat,max_holders').order('name'),
+    supabase!.from('member_designations').select('profile_id,designation_id'),
+  ])
+  if (catalog.error || assignments.error) throw new Error('designations')
+  return { catalog: catalog.data as Designation[], assignments: assignments.data as MemberDesignation[] }
+}
 
 /** Approved members only (RLS). The query asks for approved profiles with a callsign. */
 export async function loadRoster(): Promise<RosterMember[]> {
@@ -27,14 +37,18 @@ export default function Roster() {
     return (data as SeatCounts[])[0] ?? null
   })
   const [query, setQuery] = useState('')
-  const rows = filterRoster(roster.data ?? [], query)
+  const [designationFilter, setDesignationFilter] = useState('')
+  const designations = useLoad(loadDesignations)
+  const catalog = designations.data?.catalog ?? []
+  const assignments = designations.data?.assignments ?? []
+  const rows = filterByDesignation(filterRoster(roster.data ?? [], query), assignments, designationFilter || null)
 
   return (
     <>
       <h1 className="odz-title" style={{ marginBottom: '1rem' }}>
         Roster
       </h1>
-      <div style={{ marginBottom: '1rem' }}>
+      <div className="odz-row" style={{ marginBottom: '1rem', flexWrap: 'wrap' }}>
         <Field
           label="Search by callsign"
           type="search"
@@ -42,6 +56,14 @@ export default function Roster() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
+        {catalog.length > 0 && (
+          <Select
+            label="Filter by designation"
+            value={designationFilter}
+            onChange={(e) => setDesignationFilter(e.target.value)}
+            options={[{ value: '', label: 'All designations' }, ...catalog.map((d) => ({ value: d.id, label: d.name }))]}
+          />
+        )}
       </div>
       {seats.data && <SeatCounters counts={seats.data} />}
       <Panel title="Members">
@@ -52,7 +74,7 @@ export default function Roster() {
         ) : roster.failed ? (
           <p role="alert">Could not load the roster.</p>
         ) : rows.length === 0 ? (
-          <p className="odz-muted">{query ? 'No callsign matches.' : 'Nobody on the roster yet.'}</p>
+          <p className="odz-muted">{query || designationFilter ? 'No match.' : 'Nobody on the roster yet.'}</p>
         ) : (
           <Table
             rows={rows}
@@ -64,6 +86,7 @@ export default function Roster() {
                 render: (r) => <Link to={`/roster/${encodeURIComponent(r.callsign)}`}>{r.callsign}</Link>,
               },
               { header: 'Tier', render: (r) => (r.tier ? <TierMark tier={r.tier.name} /> : '-') },
+              { header: 'Designations', render: (r) => <DesignationBadges names={designationNamesFor(r.id, assignments, catalog)} /> },
               { header: 'Role', render: (r) => r.role_note ?? '' },
               { header: 'Joined', render: (r) => (r.joined_at ? formatStampPhoenix(r.joined_at).slice(0, 7) : '') },
             ]}

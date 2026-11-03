@@ -105,6 +105,12 @@ describe('adminMessage', () => {
     expect(adminMessage({ message: 'invalid_reason' })).toMatch(/reason/)
     expect(adminMessage({ message: 'account was removed' })).toMatch(/removed/)
   })
+  it('translates the designation refusals', () => {
+    expect(adminMessage({ message: 'not_eligible_tier' })).toMatch(/Command and Old Guard/)
+    expect(adminMessage({ message: 'designation_full' })).toMatch(/maximum number of holders/)
+    expect(adminMessage({ message: 'already_assigned' })).toMatch(/already holds/)
+    expect(adminMessage({ message: 'not_assigned' })).toMatch(/does not hold/)
+  })
   it('never passes unknown text through', () => {
     expect(adminMessage({ message: 'Failing row contains (1990-01-01)' })).toBe('That change was refused.')
     expect(adminMessage(null)).toBe('That change was refused.')

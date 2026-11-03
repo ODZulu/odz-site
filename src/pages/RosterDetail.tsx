@@ -5,8 +5,9 @@ import { findByCallsign } from '../lib/roster'
 import { supabase } from '../lib/supabase'
 import { formatStampPhoenix } from '../lib/time'
 import { useLoad } from '../lib/useLoad'
+import { MemberDesignationsPanel } from './MemberDesignationsPanel'
 import { RemoveMemberPanel } from './RemoveMemberPanel'
-import { loadRoster } from './Roster'
+import { loadDesignations, loadRoster } from './Roster'
 
 type PrivateRow = {
   legal_name: string
@@ -25,6 +26,7 @@ export default function RosterDetail() {
   const roster = useLoad(loadRoster)
   const member = findByCallsign(roster.data ?? [], decodeURIComponent(callsign))
   const showPrivate = can('view_member_private')
+  const designations = useLoad(loadDesignations)
 
   const priv = useLoad<PrivateRow | null>(async () => {
     if (!supabase || !member || !showPrivate) return null
@@ -89,6 +91,15 @@ export default function RosterDetail() {
         <Panel title="Bio">
           <p style={{ whiteSpace: 'pre-wrap' }}>{member.bio ?? <span className="odz-muted">Nothing here yet.</span>}</p>
         </Panel>
+        {designations.data && (
+          <MemberDesignationsPanel
+            profileId={member.id}
+            catalog={designations.data.catalog}
+            assignments={designations.data.assignments}
+            canEdit={can('edit_roster')}
+            onChange={() => void designations.reload()}
+          />
+        )}
         {showPrivate && (
           <Panel title="Private details" action={<Chip variant="accent">COMMAND-ONLY</Chip>}>
             {priv.loading ? (
