@@ -77,6 +77,21 @@ test('a removed member cannot sign in, and a session opened earlier reads nothin
   await ctx.close()
 })
 
+test('the disabled button explains itself before a reason is typed, and clears once one is', async ({ page }) => {
+  const boss = await seedUser('admin', 'rm-hint-admin')
+  const target = await seedUser('member', 'rm-hint-target')
+  await signIn(page, boss)
+  await memberPage(page, target)
+
+  const button = page.getByRole('button', { name: 'Remove member' })
+  await expect(button).toBeDisabled()
+  await expect(page.getByText('Give a reason of at least 3 characters.')).toBeVisible()
+
+  await page.getByLabel('Reason (required)').fill('e2e: hint check')
+  await expect(button).toBeEnabled()
+  await expect(page.getByText('Give a reason of at least 3 characters.')).toHaveCount(0)
+})
+
 test('Command sees the member but is not offered removal, and the RPC refuses', async ({ page }) => {
   const cmd = await seedUser('command', 'rm-cmd')
   const target = await seedUser('member', 'rm-cmd-target')

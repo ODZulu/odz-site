@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { confirmsCallsign, removalBlock, validateReason } from './removal'
+import { confirmsCallsign, removalBlock, removalMessage, validateReason } from './removal'
 
 describe('validateReason', () => {
   it('requires a reason', () => {
@@ -29,6 +29,20 @@ describe('removalBlock', () => {
   })
   it('does not offer a second removal', () =>
     expect(removalBlock({ ...base, target: { ...target, status: 'removed' } })).toMatch(/already removed/))
+})
+
+describe('removalMessage', () => {
+  it('names the missing migration instead of "refused" when the function is absent', () => {
+    expect(removalMessage({ message: 'Could not find the function public.remove_member(p_profile, p_reason) in the schema cache' })).toMatch(
+      /migration may be missing/,
+    )
+    expect(removalMessage({ message: 'PGRST202: schema cache reload needed' })).toMatch(/migration may be missing/)
+  })
+  it('keeps the genuine refusal wording for a real permission error', () => {
+    expect(removalMessage({ message: 'cannot_remove_self' })).toMatch(/yourself/)
+    expect(removalMessage({ message: 'something else entirely' })).toBe('That change was refused.')
+    expect(removalMessage(null)).toBe('That change was refused.')
+  })
 })
 
 describe('confirmsCallsign', () => {
