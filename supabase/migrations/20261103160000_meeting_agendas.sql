@@ -89,7 +89,7 @@ create table public.agenda_item_documents (
 
 create table public.agenda_publish_log (
   id uuid primary key default gen_random_uuid(),
-  agenda_id uuid not null references public.agendas (id) on delete cascade,
+  agenda_id uuid not null,                 -- no FK: the log is permanent and outlives a deleted agenda
   action text not null check (action in ('published', 'republished')),
   actor_id uuid,
   actor_callsign text,
