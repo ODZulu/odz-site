@@ -81,7 +81,7 @@ test('the Treasurer records, refuses an overdraft and reverses; a member sees on
   await expect(pt.getByRole('cell', { name: fund }).first()).toBeVisible()
 
   // Deposit $50.00 to the member.
-  await pt.getByLabel('Amount (dollars)').fill('50')
+  await pt.getByLabel('Amount (dollars)', { exact: true }).fill('50')
   await pt.getByLabel('To', { exact: true }).selectOption({ label: `Member: ${mem.callsign}` })
   await pt.getByLabel('Entry note').fill('Fake: sent ahead')
   await pt.getByRole('button', { name: 'Record entry' }).click()
@@ -89,13 +89,13 @@ test('the Treasurer records, refuses an overdraft and reverses; a member sees on
   await expect(pt.getByText('RECONCILES')).toBeVisible()
 
   // Other member gets $5.00 (to prove they are hidden from the first).
-  await pt.getByLabel('Amount (dollars)').fill('5.00')
+  await pt.getByLabel('Amount (dollars)', { exact: true }).fill('5.00')
   await pt.getByLabel('To', { exact: true }).selectOption({ label: `Member: ${other.callsign}` })
   await pt.getByRole('button', { name: 'Record entry' }).click()
   await expect(pt.getByRole('row').filter({ hasText: other.callsign }).filter({ hasText: '$5.00' }).filter({ hasText: 'deposit' })).toBeVisible()
 
   // Overdraft: $60 out of a $50 balance is refused.
-  await pt.getByLabel('Amount (dollars)').fill('60')
+  await pt.getByLabel('Amount (dollars)', { exact: true }).fill('60')
   await pt.getByLabel('From', { exact: true }).selectOption({ label: `Member: ${mem.callsign}` })
   await pt.getByLabel('To', { exact: true }).selectOption({ label: 'Outside (bank, cash)' })
   await pt.getByLabel('Entry category').selectOption('withdrawal')
