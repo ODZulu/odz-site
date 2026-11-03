@@ -62,6 +62,13 @@ Apply files in filename order to the ODZ Supabase project (SQL editor or `supaba
 * Invites cannot carry Old Guard or Command (those tiers are not `invitable`; unchanged, now tested).
 * No function from an earlier migration is redefined.
 
+`20261102210000_service_history.sql` (MVA-210): member service history and prior missions (archive + seniority display).
+* `service_records` (one row per profile: `doe`) and `service_history` (entries: date, title, location, role, notes, `source` = `app`/`manual`) are their own tables, not columns on `profiles`, so RLS can gate them more narrowly than the roster-wide profile fields (same reasoning as `member_private`).
+* `can_view_service_record(profile)`: the owner, Admin, `edit_roster` holders, or any seat holder (Old Guard or Command) -- the same three-way check as `seat_counts()` and `designations_overview()`, plus the owner. Writes (`set_doe()`, `add_service_entry()`, `update_service_entry()`, `delete_service_entry()`) need `edit_roster`.
+* Seniority is a display metric only (Dax ruling, 2026-10-13): no computed rank, no tie-break logic. DOE, years of service and mission count are shown for a human on Old Guard/Command to compare; a missing DOE is flagged in the UI, not computed around. Mission count is `count(*)` on `service_history`, so manual/archive entries and any future app-recorded attendance (`source = 'app'`) both count without extra plumbing.
+* History entries have no FK-driven deletion on soft removal (removal never deletes the profile row), so they survive it unchanged; a hard delete cascades them away with the rest of the profile.
+* No function from an earlier migration is redefined.
+
 ## Dashboard settings this schema assumes (Auth)
 
 * Email confirmation OFF (no SMTP yet, MVA-200).

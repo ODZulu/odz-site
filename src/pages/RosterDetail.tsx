@@ -2,11 +2,13 @@ import { Link, useParams } from 'react-router'
 import { useAuth } from '../auth/AuthProvider'
 import { Chip, KeyValue, Panel, TierMark } from '../components'
 import { findByCallsign } from '../lib/roster'
+import type { ServiceEntry } from '../lib/service'
 import { supabase } from '../lib/supabase'
 import { formatStampPhoenix } from '../lib/time'
 import { useLoad } from '../lib/useLoad'
 import { RemoveMemberPanel } from './RemoveMemberPanel'
 import { loadRoster } from './Roster'
+import { ServiceRecordPanel } from './ServiceRecordPanel'
 
 type PrivateRow = {
   legal_name: string
@@ -21,10 +23,27 @@ type PrivateRow = {
 /** Text is rendered as text (React escapes it): a bio with markup shows the markup, not its effect. */
 export default function RosterDetail() {
   const { callsign = '' } = useParams()
-  const { can, isAdmin, session } = useAuth()
+  const { can, isAdmin, session, tierName } = useAuth()
   const roster = useLoad(loadRoster)
   const member = findByCallsign(roster.data ?? [], decodeURIComponent(callsign))
   const showPrivate = can('view_member_private')
+  // The database also enforces this (can_view_service_record); this just keeps the panel from
+  // showing a misleading "nothing on file" to someone the record is genuinely hidden from.
+  const canViewService =
+    session?.user.id === member?.id || isAdmin || can('edit_roster') || tierName === 'Old Guard' || tierName === 'Command'
+
+  const service = useLoad<{ doe: string | null; entries: ServiceEntry[] } | null>(async () => {
+    if (!supabase || !member || !canViewService) return null
+    const [rec, hist] = await Promise.all([
+      supabase.from('service_records').select('doe').eq('profile_id', member.id).maybeSingle(),
+      supabase
+        .from('service_history')
+        .select('id,profile_id,event_date,title,location,role,notes,source')
+        .eq('profile_id', member.id),
+    ])
+    if (rec.error || hist.error) throw new Error('service')
+    return { doe: (rec.data as { doe: string | null } | null)?.doe ?? null, entries: (hist.data ?? []) as ServiceEntry[] }
+  }, [member?.id, canViewService])
 
   const priv = useLoad<PrivateRow | null>(async () => {
     if (!supabase || !member || !showPrivate) return null
@@ -89,6 +108,15 @@ export default function RosterDetail() {
         <Panel title="Bio">
           <p style={{ whiteSpace: 'pre-wrap' }}>{member.bio ?? <span className="odz-muted">Nothing here yet.</span>}</p>
         </Panel>
+        {canViewService && service.data && (
+          <ServiceRecordPanel
+            profileId={member.id}
+            doe={service.data.doe}
+            entries={service.data.entries}
+            canEdit={can('edit_roster')}
+            onChange={() => void service.reload()}
+          />
+        )}
         {showPrivate && (
           <Panel title="Private details" action={<Chip variant="accent">COMMAND-ONLY</Chip>}>
             {priv.loading ? (

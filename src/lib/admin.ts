@@ -117,6 +117,9 @@ const messages: Array<[needle: string, text: string]> = [
   ['own tier', 'You cannot change your own tier.'],
   ['own status', 'You cannot change your own status.'],
   ['prerequisite', 'That tier needs its prerequisite tier first (Command is entered from Old Guard).'],
+  ['invalid_date', 'Enter a valid date.'],
+  ['invalid_title', 'Give the mission or event a name of 1 to 80 characters.'],
+  ['invalid_source', 'That source is not recognized.'],
   ['not allowed', 'You are not allowed to do that.'],
 ]
 

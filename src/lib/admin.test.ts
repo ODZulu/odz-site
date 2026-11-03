@@ -105,6 +105,10 @@ describe('adminMessage', () => {
     expect(adminMessage({ message: 'invalid_reason' })).toMatch(/reason/)
     expect(adminMessage({ message: 'account was removed' })).toMatch(/removed/)
   })
+  it('translates the service-record refusals', () => {
+    expect(adminMessage({ message: 'invalid_date' })).toMatch(/valid date/)
+    expect(adminMessage({ message: 'invalid_title' })).toMatch(/1 to 80 characters/)
+  })
   it('never passes unknown text through', () => {
     expect(adminMessage({ message: 'Failing row contains (1990-01-01)' })).toBe('That change was refused.')
     expect(adminMessage(null)).toBe('That change was refused.')
