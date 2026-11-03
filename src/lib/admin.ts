@@ -117,6 +117,10 @@ const messages: Array<[needle: string, text: string]> = [
   ['own tier', 'You cannot change your own tier.'],
   ['own status', 'You cannot change your own status.'],
   ['prerequisite', 'That tier needs its prerequisite tier first (Command is entered from Old Guard).'],
+  ['not_eligible_tier', 'That designation is only open to Command and Old Guard.'],
+  ['designation_full', 'That designation already has its maximum number of holders.'],
+  ['already_assigned', 'That member already holds this designation.'],
+  ['not_assigned', 'That member does not hold this designation.'],
   ['not allowed', 'You are not allowed to do that.'],
 ]
 
