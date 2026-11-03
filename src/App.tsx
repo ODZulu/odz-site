@@ -27,6 +27,7 @@ import Notifications from './pages/Notifications'
 import Minutes from './pages/Minutes'
 import MotionDetail from './pages/MotionDetail'
 import Motions from './pages/Motions'
+import Treasury from './pages/Treasury'
 import MinutesDetail from './pages/MinutesDetail'
 import MinutesEdit from './pages/MinutesEdit'
 import Roster from './pages/Roster'
@@ -93,6 +94,7 @@ export default function App() {
           <Route path="/motions" element={<Motions />} />
           <Route path="/motions/:id" element={<MotionDetail />} />
           <Route path="/agenda/:eventId" element={<AgendaPage />} />
+          <Route path="/treasury" element={<Treasury />} />
           <Route path="/me" element={<Me />} />
           <Route path="/minutes" element={<Minutes />} />
           <Route path="/minutes/new" element={<MinutesEdit />} />
