@@ -25,6 +25,8 @@ import RetiredHome from './pages/RetiredHome'
 import NotificationSettings from './pages/NotificationSettings'
 import Notifications from './pages/Notifications'
 import Minutes from './pages/Minutes'
+import MotionDetail from './pages/MotionDetail'
+import Motions from './pages/Motions'
 import MinutesDetail from './pages/MinutesDetail'
 import MinutesEdit from './pages/MinutesEdit'
 import Roster from './pages/Roster'
@@ -88,6 +90,8 @@ export default function App() {
           <Route path="/roster" element={<Roster />} />
           <Route path="/roster/:callsign" element={<RosterDetail />} />
           <Route path="/designations" element={<Designations />} />
+          <Route path="/motions" element={<Motions />} />
+          <Route path="/motions/:id" element={<MotionDetail />} />
           <Route path="/agenda/:eventId" element={<AgendaPage />} />
           <Route path="/me" element={<Me />} />
           <Route path="/minutes" element={<Minutes />} />
