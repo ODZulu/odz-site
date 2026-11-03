@@ -52,6 +52,53 @@ test.describe('anonymous visitor', () => {
   })
 })
 
+test.describe('landing hero logos (MVA-244)', () => {
+  const seal = 'Operational Detachment Zulu seal'
+  const general = 'Operational Detachment Zulu general patch'
+  const styleOpacity = (l: ReturnType<import('@playwright/test').Page['getByAltText']>) =>
+    l.evaluate((el) => (el as HTMLElement).style.opacity)
+
+  test('renders one logo at a time and crossfades to the other after the interval', async ({ page }) => {
+    await page.clock.install()
+    await page.goto('/')
+    const a = page.getByAltText(seal)
+    const b = page.getByAltText(general)
+    await expect(a).toBeAttached()
+    await expect(b).toBeAttached()
+
+    const before = await Promise.all([styleOpacity(a), styleOpacity(b)])
+    expect([...before].sort()).toEqual(['0', '1'])
+
+    // runFor (not fastForward) actually fires the pending interval tick instead of just jumping
+    // the clock past it, so it isn't racing the mount effect that registers the interval.
+    await page.clock.runFor(6700)
+    await expect.poll(() => styleOpacity(a)).not.toBe(before[0])
+    const after = await Promise.all([styleOpacity(a), styleOpacity(b)])
+    expect([...after].sort()).toEqual(['0', '1'])
+  })
+
+  test('prefers-reduced-motion shows one logo and never rotates', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await page.clock.install()
+    await page.goto('/')
+    const a = page.getByAltText(seal)
+    const b = page.getByAltText(general)
+    const before = await Promise.all([styleOpacity(a), styleOpacity(b)])
+
+    await page.clock.runFor(20_000)
+    const after = await Promise.all([styleOpacity(a), styleOpacity(b)])
+    expect(after).toEqual(before)
+  })
+
+  test('fits at 360px with no horizontal scroll', async ({ page }) => {
+    await page.setViewportSize({ width: 360, height: 800 })
+    await page.goto('/')
+    await expect(page.getByAltText(seal)).toBeAttached()
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
+    expect(overflow).toBeLessThanOrEqual(0)
+  })
+})
+
 test.describe('layout', () => {
   test('no horizontal scroll on the landing and login pages', async ({ page }) => {
     for (const path of ['/', '/login']) {
