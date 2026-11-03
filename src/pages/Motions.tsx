@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
 import { useAuth } from '../auth/AuthProvider'
+import { liveMessage, parseQuorum } from '../lib/liveVote'
 import { Button, Chip, Field, Panel, Select, Table, Textarea } from '../components'
 import {
   bodyLabel,
@@ -24,7 +25,7 @@ const COLUMNS = 'id,type,title,description,options,body,round,deadline,state,sta
  * Admin, and to anyone a motion names as a party (the database decides; others simply see none).
  */
 export default function Motions() {
-  const { can, session } = useAuth()
+  const { can, session, isAdmin } = useAuth()
   const [filter, setFilter] = useState<MotionFilter>('open')
   const [creating, setCreating] = useState(false)
   const list = useLoad(async () => {
@@ -53,6 +54,7 @@ export default function Motions() {
           onCancel={() => setCreating(false)}
         />
       )}
+      {isAdmin && <QuorumPanel />}
       <Panel title="Motions">
         <div style={{ marginBottom: '0.75rem' }}>
           <Select
@@ -193,6 +195,56 @@ function NewMotion({ onDone, onCancel }: { onDone: () => void; onCancel: () => v
             Cancel
           </Button>
         </div>
+      </div>
+    </Panel>
+  )
+}
+
+/**
+ * Quorum for live meeting votes (MVA-246). A setting with no default: empty means no quorum rule.
+ * When set, a vote with fewer votes cast (abstentions count) than the quorum has no result.
+ */
+function QuorumPanel() {
+  const current = useLoad(async () => {
+    const { data, error } = await supabase!.from('meeting_vote_settings').select('quorum').eq('singleton', true).maybeSingle()
+    if (error) throw new Error('quorum')
+    return ((data as { quorum: number | null } | null)?.quorum ?? null) as number | null
+  })
+  const [text, setText] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  async function save() {
+    const parsed = parseQuorum(text)
+    if (!parsed.ok) return setError(liveMessage('bad_quorum'))
+    setError(null)
+    setBusy(true)
+    const { error: err } = await supabase!.rpc('set_vote_quorum', { p_quorum: parsed.value })
+    setBusy(false)
+    if (err) return setError(liveMessage(err.message))
+    setText('')
+    await current.reload()
+  }
+
+  return (
+    <Panel title="Meeting vote quorum (Admin)">
+      <div className="odz-stack">
+        <p>
+          {current.loading
+            ? 'Loading'
+            : current.data === null || current.data === undefined
+              ? 'No quorum is set. Live votes decide by a strict majority of eligible voters.'
+              : `Quorum: ${current.data} votes cast (abstentions count).`}
+        </p>
+        <Field label="Quorum (votes cast; leave empty for none)" inputMode="numeric" value={text} onChange={(e) => setText(e.target.value)} />
+        {error && (
+          <p role="alert" style={{ color: 'var(--alert)' }}>
+            {error}
+          </p>
+        )}
+        <Button disabled={busy} onClick={() => void save()}>
+          Save quorum
+        </Button>
       </div>
     </Panel>
   )

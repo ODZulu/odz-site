@@ -24,6 +24,7 @@ import {
 import { Markdown } from '../lib/markdown'
 import { supabase } from '../lib/supabase'
 import { formatTimeL } from '../lib/time'
+import { LiveVotePanel } from './LiveVotePanel'
 import { useLoad } from '../lib/useLoad'
 
 type EventRow = { id: string; title: string; event_type: string; starts_at: string; ends_at: string | null; status: string }
@@ -284,6 +285,14 @@ export default function AgendaPage() {
                               Pre-read: <Link to={`/documents/${doc.slug}`}>{doc.title}</Link>
                             </p>
                           ))}
+                        {it.kind === 'vote' && agenda.status === 'published' && (
+                          <LiveVotePanel
+                            itemId={it.id}
+                            canChair={write}
+                            members={d.members}
+                            hasWording={!!it.vote_wording && it.vote_wording.trim() !== ''}
+                          />
+                        )}
                         {it.outcome_md && (
                           <p style={{ whiteSpace: 'pre-wrap' }}>
                             <strong>Outcome:</strong> {it.outcome_md}
