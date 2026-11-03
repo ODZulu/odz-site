@@ -97,10 +97,12 @@ test('the Vacant list is visible to Old Guard, hidden from a plain Member, and C
 
   await signIn(page, mem)
   await expect(page.getByRole('link', { name: 'DESIGNATIONS' })).toHaveCount(0)
+  await page.getByRole('button', { name: 'Sign out' }).click()
+  await expect(page.getByRole('button', { name: 'Sign out' })).toHaveCount(0)
 
   await signIn(page, og)
   await page.goto('/designations')
-  await expect(page.getByText('Vacant')).toBeVisible()
+  await expect(page.getByRole('cell', { name: 'Vacant' }).first()).toBeVisible()
 
   const asCmd = await asUser(cmd.email, cmd.password)
   const caps = await asCmd.rpc('my_capabilities')

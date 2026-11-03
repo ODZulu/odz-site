@@ -43,7 +43,7 @@ begin
 
   ------------------------------------------------------------------ seed fake accounts
   insert into public.invites (code, tier_id)
-  select 'desfake00000000' || to_char(g, 'FM00'), t_recruit from generate_series(10, 15) g;
+  select 'desfake0000000' || to_char(g, 'FM00'), t_recruit from generate_series(10, 15) g;
   insert into auth.users (id, email, aud, role, raw_user_meta_data) values
     (v_adm, 'des-adm@example.invalid', 'authenticated', 'authenticated', '{"invite_code":"desfake000000010"}'),
     (v_cmd, 'des-cmd@example.invalid', 'authenticated', 'authenticated', '{"invite_code":"desfake000000011"}'),
