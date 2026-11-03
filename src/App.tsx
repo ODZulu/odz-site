@@ -4,6 +4,7 @@ import { AppShell, GateLayout, PublicFrame } from './components'
 import { useAuth } from './auth/AuthProvider'
 import { homeFor } from './lib/access'
 import Calendar from './pages/Calendar'
+import AgendaPage from './pages/AgendaPage'
 import AdminLayout from './pages/admin/AdminLayout'
 import Audit from './pages/admin/Audit'
 import Invites from './pages/admin/Invites'
@@ -87,6 +88,7 @@ export default function App() {
           <Route path="/roster" element={<Roster />} />
           <Route path="/roster/:callsign" element={<RosterDetail />} />
           <Route path="/designations" element={<Designations />} />
+          <Route path="/agenda/:eventId" element={<AgendaPage />} />
           <Route path="/me" element={<Me />} />
           <Route path="/minutes" element={<Minutes />} />
           <Route path="/minutes/new" element={<MinutesEdit />} />
