@@ -1,12 +1,31 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
+import { useAuth } from '../auth/AuthProvider'
 import { DesignationBadges, Field, Panel, Select, SeatCounters, Table, TierMark } from '../components'
 import { designationNamesFor, filterByDesignation, type Designation, type MemberDesignation } from '../lib/designations'
 import { filterRoster, sortRoster, type RosterMember } from '../lib/roster'
 import type { SeatCounts } from '../lib/seats'
+import { yearsOfService } from '../lib/service'
 import { supabase } from '../lib/supabase'
-import { formatStampPhoenix } from '../lib/time'
+import { formatPlainDate, formatStampPhoenix } from '../lib/time'
 import { useLoad } from '../lib/useLoad'
+
+type SeniorityRow = { profile_id: string; doe: string | null }
+
+/** DOE and mission count are a comparison tool for Old Guard/Command (Dax ruling: display only,
+ * no computed rank); RLS returns nothing for anyone else, so this is skipped for everyone else. */
+async function loadSeniority(): Promise<{ records: SeniorityRow[]; counts: Map<string, number> }> {
+  const [rec, hist] = await Promise.all([
+    supabase!.from('service_records').select('profile_id,doe'),
+    supabase!.from('service_history').select('profile_id'),
+  ])
+  if (rec.error || hist.error) throw new Error('seniority')
+  const counts = new Map<string, number>()
+  for (const row of (hist.data ?? []) as Array<{ profile_id: string }>) {
+    counts.set(row.profile_id, (counts.get(row.profile_id) ?? 0) + 1)
+  }
+  return { records: (rec.data ?? []) as SeniorityRow[], counts }
+}
 
 export async function loadDesignations(): Promise<{ catalog: Designation[]; assignments: MemberDesignation[] }> {
   const [catalog, assignments] = await Promise.all([
@@ -29,6 +48,8 @@ export async function loadRoster(): Promise<RosterMember[]> {
 }
 
 export default function Roster() {
+  const { isAdmin, can, tierName } = useAuth()
+  const canCompareSeniority = isAdmin || can('edit_roster') || tierName === 'Old Guard' || tierName === 'Command'
   const roster = useLoad(loadRoster)
   // Seat holders and roster managers only; anyone else gets a refusal and sees no panel.
   const seats = useLoad(async () => {
@@ -36,12 +57,14 @@ export default function Roster() {
     if (error) return null
     return (data as SeatCounts[])[0] ?? null
   })
+  const seniority = useLoad(async () => (canCompareSeniority ? loadSeniority() : null), [canCompareSeniority])
   const [query, setQuery] = useState('')
   const [designationFilter, setDesignationFilter] = useState('')
   const designations = useLoad(loadDesignations)
   const catalog = designations.data?.catalog ?? []
   const assignments = designations.data?.assignments ?? []
   const rows = filterByDesignation(filterRoster(roster.data ?? [], query), assignments, designationFilter || null)
+  const doeFor = (profileId: string) => seniority.data?.records.find((r) => r.profile_id === profileId)?.doe ?? null
 
   return (
     <>
@@ -87,6 +110,23 @@ export default function Roster() {
               },
               { header: 'Tier', render: (r) => (r.tier ? <TierMark tier={r.tier.name} /> : '-') },
               { header: 'Designations', render: (r) => <DesignationBadges names={designationNamesFor(r.id, assignments, catalog)} /> },
+              ...(canCompareSeniority
+                ? [
+                    {
+                      header: 'Seniority',
+                      render: (r: RosterMember) => {
+                        const doe = doeFor(r.id)
+                        const years = yearsOfService(doe)
+                        const missions = seniority.data?.counts.get(r.id) ?? 0
+                        return doe ? (
+                          <span>{`${formatPlainDate(doe)} · ${years}y · ${missions}`}</span>
+                        ) : (
+                          <span className="odz-muted">DOE missing</span>
+                        )
+                      },
+                    },
+                  ]
+                : []),
               { header: 'Role', render: (r) => r.role_note ?? '' },
               { header: 'Joined', render: (r) => (r.joined_at ? formatStampPhoenix(r.joined_at).slice(0, 7) : '') },
             ]}

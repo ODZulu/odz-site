@@ -121,6 +121,9 @@ const messages: Array<[needle: string, text: string]> = [
   ['designation_full', 'That designation already has its maximum number of holders.'],
   ['already_assigned', 'That member already holds this designation.'],
   ['not_assigned', 'That member does not hold this designation.'],
+  ['invalid_date', 'Enter a valid date.'],
+  ['invalid_title', 'Give the mission or event a name of 1 to 80 characters.'],
+  ['invalid_source', 'That source is not recognized.'],
   ['not allowed', 'You are not allowed to do that.'],
 ]
 

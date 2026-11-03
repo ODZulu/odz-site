@@ -111,6 +111,10 @@ describe('adminMessage', () => {
     expect(adminMessage({ message: 'already_assigned' })).toMatch(/already holds/)
     expect(adminMessage({ message: 'not_assigned' })).toMatch(/does not hold/)
   })
+  it('translates the service-record refusals', () => {
+    expect(adminMessage({ message: 'invalid_date' })).toMatch(/valid date/)
+    expect(adminMessage({ message: 'invalid_title' })).toMatch(/1 to 80 characters/)
+  })
   it('never passes unknown text through', () => {
     expect(adminMessage({ message: 'Failing row contains (1990-01-01)' })).toBe('That change was refused.')
     expect(adminMessage(null)).toBe('That change was refused.')

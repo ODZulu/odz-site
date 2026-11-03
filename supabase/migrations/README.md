@@ -69,6 +69,12 @@ Apply files in filename order to the ODZ Supabase project (SQL editor or `supaba
 * `assign_designation()` / `revoke_designation()` need `edit_roster` (Command by default, Admin passes every check), the same gate as other roster-editing actions. `designation_holders(id)` is the cross-app "list active holders" helper (excludes soft-removed members). `designations_overview()` backs the Vacant list, visible to Admin, `edit_roster` holders, or any seat holder (Old Guard or Command) — the same three-way check as `seat_counts()`.
 * `list_audit()` (redefined) picks up a `designation_audit` branch, visible to the same audience as the rest of the feed.
 * Seed: five capabilities (`manage_treasury`, `manage_inventory`, `manage_shop`, `hold_office_xo`, `hold_office_training` — the last two are placeholders from Lord's amendment on the run order, grant no powers yet) and the five designation rows. Adding one later needs no schema change beyond a new seed row and capability.
+`20261102210000_service_history.sql` (MVA-210): member service history and prior missions (archive + seniority display).
+* `service_records` (one row per profile: `doe`) and `service_history` (entries: date, title, location, role, notes, `source` = `app`/`manual`) are their own tables, not columns on `profiles`, so RLS can gate them more narrowly than the roster-wide profile fields (same reasoning as `member_private`).
+* `can_view_service_record(profile)`: the owner, Admin, `edit_roster` holders, or any seat holder (Old Guard or Command) -- the same three-way check as `seat_counts()` and `designations_overview()`, plus the owner. Writes (`set_doe()`, `add_service_entry()`, `update_service_entry()`, `delete_service_entry()`) need `edit_roster`.
+* Seniority is a display metric only (Dax ruling, 2026-10-13): no computed rank, no tie-break logic. DOE, years of service and mission count are shown for a human on Old Guard/Command to compare; a missing DOE is flagged in the UI, not computed around. Mission count is `count(*)` on `service_history`, so manual/archive entries and any future app-recorded attendance (`source = 'app'`) both count without extra plumbing.
+* History entries have no FK-driven deletion on soft removal (removal never deletes the profile row), so they survive it unchanged; a hard delete cascades them away with the rest of the profile.
+* No function from an earlier migration is redefined.
 
 ## Dashboard settings this schema assumes (Auth)
 
