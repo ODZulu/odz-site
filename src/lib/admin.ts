@@ -112,6 +112,7 @@ const messages: Array<[needle: string, text: string]> = [
   ['invalid_reason', 'Give a reason of 3 to 500 characters.'],
   ['already_removed', 'That member is already removed.'],
   ['not_removed', 'Only a removed member can be deleted for good.'],
+  ['not_reinstatable', 'Only a removed member can be reinstated. Reload and try again.'],
   ['not_found', 'That member was not found. Reload and try again.'],
   ['invalid_note', 'Write a note of 3 to 300 characters.'],
   ['tier_barred', 'Command and Old Guard cannot be moved to or from a role-based tier directly. Change the player tier first.'],
