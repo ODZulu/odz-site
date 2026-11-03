@@ -36,18 +36,18 @@ test('Command assigns two designations to an Old Guard member, the roster shows 
 
   await page.getByLabel('Assign a designation', { exact: false }).selectOption({ label: 'Treasurer' })
   await page.getByRole('button', { name: 'Assign' }).click()
-  await expect(page.getByText('Treasurer')).toBeVisible()
+  await expect(page.getByText('Treasurer', { exact: true })).toBeVisible()
 
   await page.getByLabel('Assign a designation', { exact: false }).selectOption({ label: 'Quartermaster' })
   await page.getByRole('button', { name: 'Assign' }).click()
-  await expect(page.getByText('Quartermaster')).toBeVisible()
+  await expect(page.getByText('Quartermaster', { exact: true })).toBeVisible()
 
   // Badges show on the roster too. A plain tag locator, not getByRole('row'): the responsive
   // table CSS switches <tr> to display:flex below 720px, which drops its implicit row role.
   await page.goto('/roster')
   const row = page.locator('tr').filter({ hasText: target.callsign })
-  await expect(row.getByText('Treasurer')).toBeVisible()
-  await expect(row.getByText('Quartermaster')).toBeVisible()
+  await expect(row.getByText('Treasurer', { exact: true })).toBeVisible()
+  await expect(row.getByText('Quartermaster', { exact: true })).toBeVisible()
 
   // Revoking one leaves the other. Held badges render in catalog (alphabetical) order, so the
   // first Revoke button is Quartermaster's, not Treasurer's; the revoked one also reappears in
@@ -55,7 +55,7 @@ test('Command assigns two designations to an Old Guard member, the roster shows 
   await memberPage(page, target)
   await page.getByRole('button', { name: 'Revoke' }).first().click()
   await expect(page.getByRole('button', { name: 'Revoke' })).toHaveCount(1)
-  await expect(page.getByText('Treasurer')).toBeVisible()
+  await expect(page.getByText('Treasurer', { exact: true })).toBeVisible()
 
   const rows = await admin().from('member_designations').select('designation_id').eq('profile_id', target.id)
   expect(rows.data).toHaveLength(1)
@@ -80,7 +80,7 @@ test('an office seat cannot go to a Member, and the holder cap is enforced with 
   await memberPage(page, og1)
   await page.getByLabel('Assign a designation', { exact: false }).selectOption({ label: 'Treasurer' })
   await page.getByRole('button', { name: 'Assign' }).click()
-  await expect(page.getByText('Treasurer')).toBeVisible()
+  await expect(page.getByText('Treasurer', { exact: true })).toBeVisible()
 
   await memberPage(page, og2)
   await page.getByLabel('Assign a designation', { exact: false }).selectOption({ label: 'Treasurer' })

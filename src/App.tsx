@@ -20,6 +20,7 @@ import Join from './pages/Join'
 import Landing from './pages/Landing'
 import Login from './pages/Login'
 import Me from './pages/Me'
+import RetiredHome from './pages/RetiredHome'
 import NotificationSettings from './pages/NotificationSettings'
 import Notifications from './pages/Notifications'
 import Minutes from './pages/Minutes'
@@ -67,6 +68,19 @@ export default function App() {
           <Route path="/denied" element={<Denied />} />
         </Route>
       </Route>
+      {/* Retired accounts (MVA-238): their own home, plus Traffic and notifications shared with approved members. */}
+      <Route element={<Gate page="retired" />}>
+        <Route element={<AppShell />}>
+          <Route path="/retired" element={<RetiredHome />} />
+        </Route>
+      </Route>
+      <Route element={<Gate page="shared" />}>
+        <Route element={<AppShell />}>
+          <Route path="/notifications" element={<Notifications />} />
+          <Route path="/settings/notifications" element={<NotificationSettings />} />
+          <Route path="/traffic" element={<Traffic />} />
+        </Route>
+      </Route>
       <Route element={<Gate page="app" />}>
         <Route element={<AppShell />}>
           <Route path="/hq" element={<Hq />} />
@@ -74,9 +88,6 @@ export default function App() {
           <Route path="/roster/:callsign" element={<RosterDetail />} />
           <Route path="/designations" element={<Designations />} />
           <Route path="/me" element={<Me />} />
-          <Route path="/notifications" element={<Notifications />} />
-          <Route path="/settings/notifications" element={<NotificationSettings />} />
-          <Route path="/traffic" element={<Traffic />} />
           <Route path="/minutes" element={<Minutes />} />
           <Route path="/minutes/new" element={<MinutesEdit />} />
           <Route path="/minutes/:id" element={<MinutesDetail />} />

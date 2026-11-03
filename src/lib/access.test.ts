@@ -28,6 +28,10 @@ describe('homeFor', () => {
   })
   it('holds pending accounts after setup', () => expect(homeFor(state('pending', true))).toBe('/pending'))
   it('lets approved accounts into the app', () => expect(homeFor(state('approved', true))).toBe('/hq'))
+  it('sends retired accounts to their limited home (MVA-238), after setup', () => {
+    expect(homeFor(state('retired', true))).toBe('/retired')
+    expect(homeFor(state('retired', false))).toBe('/setup')
+  })
 })
 
 describe('redirectFor', () => {
@@ -48,9 +52,24 @@ describe('redirectFor', () => {
     expect(redirectFor(state('pending', true), 'setup')).toBe('/pending'))
   it('does not show the pending screen to approved accounts', () =>
     expect(redirectFor(state('approved', true), 'pending')).toBe('/hq'))
+  it('keeps retired accounts out of the full app and shows them their own home (MVA-238)', () => {
+    expect(redirectFor(state('retired', true), 'app')).toBe('/retired')
+    expect(redirectFor(state('retired', true), 'retired')).toBeNull()
+    expect(redirectFor(state('approved', true), 'retired')).toBe('/hq')
+    expect(redirectFor(state('pending', true), 'retired')).toBe('/pending')
+  })
+  it('opens shared pages (Traffic, notifications) to approved and retired accounts only', () => {
+    expect(redirectFor(state('approved', true), 'shared')).toBeNull()
+    expect(redirectFor(state('retired', true), 'shared')).toBeNull()
+    expect(redirectFor(state('pending', true), 'shared')).toBe('/pending')
+    expect(redirectFor(state('suspended', true), 'shared')).toBe('/denied')
+    expect(redirectFor(state('removed', true), 'shared')).toBe('/denied')
+    expect(redirectFor(anon, 'shared')).toBe('/login')
+  })
 })
 
 describe('redirectIfSignedIn', () => {
   it('leaves signed-out visitors on public pages', () => expect(redirectIfSignedIn(anon)).toBeNull())
   it('moves signed-in accounts on', () => expect(redirectIfSignedIn(state('approved', true))).toBe('/hq'))
+  it('moves retired accounts to their own home', () => expect(redirectIfSignedIn(state('retired', true))).toBe('/retired'))
 })
