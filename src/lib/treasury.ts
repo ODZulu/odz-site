@@ -27,7 +27,7 @@ export type Entry = {
 
 export type Fund = { id: string; name: string }
 
-export const CATEGORIES = ['deposit', 'withdrawal', 'transfer', 'event', 'equipment', 'dues', 'adjustment', 'other'] as const
+export const CATEGORIES = ['deposit', 'withdrawal', 'transfer', 'donation', 'refund', 'event', 'equipment', 'dues', 'adjustment', 'other'] as const
 
 export const BANNER = 'Tracking only. Real money is held by banks.'
 
@@ -145,6 +145,11 @@ const messages: Record<string, string> = {
   insufficient_funds: 'That would take a balance below zero, so it was refused.',
   already_reversed: 'That entry has already been reversed.',
   is_reversal: 'A reversal cannot be reversed. Enter a new correcting entry.',
+  not_pending: 'That request is no longer pending.',
+  own_request: 'You cannot decide your own request.',
+  needs_approval: 'This request is above the limit and needs Command approval first.',
+  no_approval_needed: 'This request is at or below the limit and needs no approval.',
+  already_approved: 'That request is already approved.',
 }
 
 /** Maps the database's fixed error codes to words. Never echoes anything the user typed. */

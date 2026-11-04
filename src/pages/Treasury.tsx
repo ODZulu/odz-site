@@ -16,6 +16,7 @@ import {
 } from '../lib/treasury'
 import { supabase } from '../lib/supabase'
 import { useLoad } from '../lib/useLoad'
+import { TreasuryRequests } from './TreasuryRequests'
 
 type Access = 'none' | 'own' | 'full'
 type BalanceRow = { kind: 'fund' | 'member'; id: string; name: string; balance_cents: number }
@@ -116,6 +117,8 @@ export default function Treasury() {
             </p>
             <p className="odz-muted">What the team record says is held for you. The money itself is in the bank.</p>
           </Panel>
+
+          <TreasuryRequests funds={d.funds} canManage={d.canManage} onChange={() => void data.reload()} />
 
           {d.access === 'full' && (
             <>

@@ -208,8 +208,8 @@ begin
   select coalesce(sum(amount_cents) filter (where from_kind = 'external'), 0) - coalesce(sum(amount_cents) filter (where to_kind = 'external'), 0)
     into b from public.treasury_entries;
   if b <> r.net_external then raise exception 'FAIL: net external mismatch'; end if;
-  if (select sum(balance_cents) from (select public.treasury_fund_balance_raw(id) as balance_cents from public.treasury_funds) q)
-     + (select coalesce(sum(public.treasury_member_balance_raw(id)), 0) from public.profiles) <> b
+  if (select coalesce(sum(balance_cents), 0) from (select public.treasury_fund_balance_raw(id) as balance_cents from public.treasury_funds) q)
+     + (select coalesce(sum(public.treasury_member_balance_raw(m)), 0) from (select from_member as m from public.treasury_entries where from_member is not null union select to_member from public.treasury_entries where to_member is not null) x) <> b
     then raise exception 'FAIL: buckets do not sum to net external'; end if;
 
   -- A larger random-ish sequence still reconciles and never goes negative.
@@ -246,7 +246,7 @@ begin
     perform pg_temp.act(case s when 'o2' then o2 else c1 end);
     select count(*) into n from public.treasury_entries;
     if n <> (select count(*) from public.treasury_entries where true) or n < 10 then raise exception 'FAIL: % sees the full ledger', s; end if;
-    if (select count(*) from public.treasury_balances() where kind = 'fund') <> 2 then raise exception 'FAIL: % sees the coffers', s; end if;
+    if (select count(*) from public.treasury_balances() where kind = 'fund') <> (select count(*) from public.treasury_funds) then raise exception 'FAIL: % sees the coffers', s; end if;
     if not exists (select 1 from public.treasury_entries where from_callsign = 'Fake-M1') then raise exception 'FAIL: % sees names', s; end if;
     reset role;
   end loop;
