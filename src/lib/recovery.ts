@@ -63,6 +63,9 @@ export function hasRecovery(store: Store | undefined = tabStore()): boolean {
   }
 }
 
+/** True when a URL fragment is a Supabase recovery redirect (implicit flow: #access_token=...&type=recovery). */
+export const isRecoveryHash = (hash: string): boolean => new URLSearchParams(hash.replace(/^#/, '')).get('type') === 'recovery'
+
 export function clearRecovery(store: Store | undefined = tabStore()): void {
   try {
     store?.removeItem(KEY)

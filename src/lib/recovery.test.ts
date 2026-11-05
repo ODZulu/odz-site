@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { clearRecovery, hasRecovery, hasResetErrors, markRecovery, NEUTRAL_RESET_MESSAGE, resetUrl, validateForgot, validateReset } from './recovery'
+import { clearRecovery, hasRecovery, hasResetErrors, isRecoveryHash, markRecovery, NEUTRAL_RESET_MESSAGE, resetUrl, validateForgot, validateReset } from './recovery'
 import { PASSWORD_MIN } from './validate'
 
 const memory = () => {
@@ -46,5 +46,13 @@ describe('messages', () => {
   })
   it('builds the redirect from the origin', () => {
     expect(resetUrl('https://odzulu.com')).toBe('https://odzulu.com/reset-password')
+  })
+})
+
+describe('isRecoveryHash', () => {
+  it('recognises a recovery redirect fragment only', () => {
+    expect(isRecoveryHash('#access_token=a&refresh_token=b&type=recovery')).toBe(true)
+    expect(isRecoveryHash('#access_token=a&type=signup')).toBe(false)
+    expect(isRecoveryHash('')).toBe(false)
   })
 })
