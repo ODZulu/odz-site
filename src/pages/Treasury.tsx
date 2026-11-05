@@ -16,6 +16,7 @@ import {
 } from '../lib/treasury'
 import { supabase } from '../lib/supabase'
 import { useLoad } from '../lib/useLoad'
+import { TreasuryAccessPanel } from './TreasuryAccessPanel'
 import { TreasuryRequests } from './TreasuryRequests'
 
 type Access = 'none' | 'own' | 'full'
@@ -29,12 +30,13 @@ const ENTRY_COLUMNS =
 async function load() {
   const acc = await supabase!.rpc('treasury_access')
   const access = (acc.data ?? 'none') as Access
-  if (access === 'none') return { access, entries: [] as Entry[], funds: [] as Fund[], balance: 0, balances: [] as BalanceRow[], recon: null as Recon | null, members: [] as Member[], canManage: false }
-  const [entries, funds, bal, canManage] = await Promise.all([
+  if (access === 'none') return { access, entries: [] as Entry[], funds: [] as Fund[], balance: 0, balances: [] as BalanceRow[], recon: null as Recon | null, members: [] as Member[], canManage: false, memberAccess: null as boolean | null }
+  const [entries, funds, bal, canManage, memberAccess] = await Promise.all([
     supabase!.from('treasury_entries').select(ENTRY_COLUMNS).order('entry_date', { ascending: false }).order('created_at', { ascending: false }).limit(1000),
     supabase!.from('treasury_funds').select('id,name').order('name'),
     supabase!.rpc('treasury_my_balance'),
     supabase!.rpc('treasury_can_manage'),
+    supabase!.rpc('treasury_member_access'),
   ])
   if (entries.error || funds.error) throw new Error('treasury')
   let balances: BalanceRow[] = []
@@ -59,6 +61,8 @@ async function load() {
     recon,
     members,
     canManage: canManage.data === true,
+    // null for everyone but an Admin (the database decides), so the switch only shows for Admins.
+    memberAccess: typeof memberAccess.data === 'boolean' ? memberAccess.data : null,
   }
 }
 
@@ -117,6 +121,8 @@ export default function Treasury() {
             </p>
             <p className="odz-muted">What the team record says is held for you. The money itself is in the bank.</p>
           </Panel>
+
+          {d.memberAccess !== null && <TreasuryAccessPanel on={d.memberAccess} onDone={() => void data.reload()} />}
 
           <TreasuryRequests funds={d.funds} canManage={d.canManage} onChange={() => void data.reload()} />
 

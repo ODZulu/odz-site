@@ -148,3 +148,47 @@ test('the Treasurer records, refuses an overdraft and reverses; a member sees on
   await po.context().close()
   await pt.context().close()
 })
+
+test('Admin switches member access on and off from the Treasury page; non-Admin never sees the control (MVA-255)', async ({ browser }) => {
+  await setAccess(false)
+  const boss = await seedUser('admin', 'tra-adm')
+  const cmd = await seedUser('command', 'tra-cmd')
+  const mem = await seedUser('member', 'tra-mem')
+  await admin().from('treasury_settings').update({ approval_threshold_cents: 0 }).eq('singleton', true)
+
+  const pa = await signedInPage(browser, boss)
+  await pa.goto('/treasury')
+  await expect(pa.getByRole('heading', { name: 'Member access' })).toBeVisible()
+  await expect(pa.getByLabel('Member access state')).toContainText('Only Admins can use the treasury')
+  await expect(pa.getByText('every refund needs Command approval')).toBeVisible()
+  expect(await noSideScroll(pa)).toBe(true)
+
+  // Members cannot get in while it is off.
+  const pm = await signedInPage(browser, mem)
+  await pm.goto('/treasury')
+  await expect(pm.getByText('The treasury is not open yet.')).toBeVisible()
+
+  await pa.getByRole('button', { name: 'Turn member access on' }).click()
+  await expect(pa.getByLabel('Member access state')).toContainText('Members can see their own entries')
+  await pm.reload()
+  await expect(pm.getByRole('heading', { name: 'Your stored balance' })).toBeVisible()
+  await expect(pm.getByRole('heading', { name: 'Member access' })).toHaveCount(0)
+
+  // Turning it off asks first and explains the loss.
+  await expect(pa.getByText('members lose their balance')).toBeVisible()
+  await pa.getByRole('button', { name: 'Turn member access off' }).click()
+  await pa.getByRole('button', { name: 'Confirm: turn off' }).click()
+  await expect(pa.getByLabel('Member access state')).toContainText('Only Admins can use the treasury')
+  await pm.reload()
+  await expect(pm.getByText('The treasury is not open yet.')).toBeVisible()
+
+  // Both changes are in the audit log, and the API refuses non-Admins.
+  const audit = await admin().from('settings_audit').select('detail').eq('event', 'treasury_member_access_changed').eq('actor_id', boss.id)
+  expect((audit.data ?? []).map((r) => r.detail).sort()).toEqual(['false -> true', 'true -> false'])
+  await setAccess(true)
+  const c = await asUser(cmd.email, cmd.password)
+  expect((await c.rpc('treasury_member_access')).data).toBeNull()
+  expect((await c.rpc('set_treasury_member_access', { p_on: false })).error?.message).toBe('not allowed')
+  await pa.context().close()
+  await pm.context().close()
+})
