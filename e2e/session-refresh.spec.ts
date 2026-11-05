@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { admin, cleanup, hasBackend, resetInviteAttempts, seedUser, tierId } from './helpers/backend'
+import { admin, asUser, cleanup, hasBackend, openSeatCaps, resetInviteAttempts, seedUser, tierId } from './helpers/backend'
 
 test.skip(!hasBackend, 'needs a local Supabase stack (see docs/TESTING.md)')
 
@@ -26,21 +26,23 @@ const refocus = async (page: Page) => {
 }
 
 test('MVA-252: an open session follows a role change without signing out', async ({ page }) => {
-  const u = await seedUser('command', 'sr-cmd')
+  await openSeatCaps()
+  const u = await seedUser('member', 'sr-mem')
   await signIn(page, u)
   const nav = page.getByRole('navigation', { name: 'Main' })
-  await expect(nav.getByRole('link', { name: 'MOTIONS' })).toBeVisible()
+  await expect(nav.getByRole('link', { name: 'MOTIONS' })).toHaveCount(0)
 
-  // Demoted elsewhere: the open session catches up on the next refresh.
+  // Promoted elsewhere (Old Guard sees Motions and Designations): the open session catches up on the next refresh.
+  expect((await admin().from('profiles').update({ tier_id: await tierId('Old Guard') }).eq('id', u.id)).error).toBeNull()
+  await refocus(page)
+  await expect(nav.getByRole('link', { name: 'MOTIONS' })).toBeVisible()
+  await expect(nav.getByRole('link', { name: 'DESIGNATIONS' })).toBeVisible()
+
+  // Demoted again: the tabs go, still no sign-out.
   expect((await admin().from('profiles').update({ tier_id: await tierId('Member') }).eq('id', u.id)).error).toBeNull()
   await refocus(page)
   await expect(nav.getByRole('link', { name: 'MOTIONS' })).toHaveCount(0)
-  await expect(nav.getByRole('link', { name: 'DESIGNATIONS' })).toHaveCount(0)
-
-  // Promoted again: the tabs come back, still no sign-out.
-  expect((await admin().from('profiles').update({ tier_id: await tierId('Command') }).eq('id', u.id)).error).toBeNull()
-  await refocus(page)
-  await expect(nav.getByRole('link', { name: 'MOTIONS' })).toBeVisible()
+  await expect(page).toHaveURL(/\/hq$/)
 })
 
 test('MVA-252: a retired member lands on the Retired home; a removed member is signed out', async ({ page }) => {
@@ -50,11 +52,12 @@ test('MVA-252: a retired member lands on the Retired home; a removed member is s
   await refocus(page)
   await expect(page).toHaveURL(/\/retired$/)
 
+  const boss = await seedUser('admin', 'sr-boss')
   const gone = await seedUser('member', 'sr-rem')
   await page.context().clearCookies()
   await page.evaluate(() => localStorage.clear())
   await signIn(page, gone)
-  expect((await admin().from('profiles').update({ status: 'removed' }).eq('id', gone.id)).error).toBeNull()
+  expect((await (await asUser(boss.email, boss.password)).rpc('remove_member', { p_profile: gone.id, p_reason: 'e2e: session refresh' })).error).toBeNull()
   await refocus(page)
   await expect(page).toHaveURL(/\/login$/)
 })
