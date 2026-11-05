@@ -77,9 +77,15 @@ export function returnTierOptions(opts: {
     .sort((a, b) => a.rank - b.rank)
 }
 
+export const PICK_TIER_MESSAGE = 'Pick a tier to restore this member to'
+
+/** True when the refusal was a missing or unusable tier, so the screen can ask for one. */
+export const isTierMissing = (error: { message?: string } | null | undefined): boolean => error?.message === 'invalid_tier'
+
 /** Translates a retire / unretire refusal into a message to show. */
 export function retireMessage(error: { message?: string } | null | undefined): string {
   const m = error?.message ?? ''
+  if (m === 'invalid_tier') return PICK_TIER_MESSAGE
   if (m === 'invalid_reason') return `Keep the reason to ${RETIRE_REASON_MAX} characters.`
   if (/schema cache|could not find the function/i.test(m)) {
     return 'Retiring is not available on this database; the migration may be missing.'
