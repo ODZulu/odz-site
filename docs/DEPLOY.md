@@ -25,7 +25,7 @@ Vite bakes env vars in at build time: after changing one, redeploy.
 
 ## 2. Apply the migrations (from the folder, in order, never ad hoc SQL)
 
-The Supabase CLI is pinned as a devDependency (`supabase` 2.120.0, exact version in `package.json`); use `npx supabase ...` or the npm scripts, never `npx supabase@latest`. Log in once in your own terminal with `npx supabase login`.
+The Supabase CLI is pinned as a devDependency (`supabase` 3.0.0, exact version in `package.json`); use `npx supabase ...` or the npm scripts, never `npx supabase@latest`. Log in once in your own terminal with `npx supabase login`.
 
 ```
 npx supabase link --project-ref <prod-ref>
@@ -96,8 +96,8 @@ Push stays **off** until this is done; the app shows "Push is not set up for thi
 
   ```
   npx supabase link --project-ref <prod-ref>
-  npx supabase db dump -f ../odz-prod-schema.sql
-  npx supabase db dump --data-only -f ../odz-prod-data.sql
+  npx supabase db dump --remote -f ../odz-prod-schema.sql
+  npx supabase db dump --remote --data-only -f ../odz-prod-data.sql
   ```
 
   Write the dumps **outside the repo** (they contain member private data) into an encrypted location such as the password manager's file vault or an encrypted drive. Keep the last 4. Files in the `minutes` storage bucket are not in the dump; download them from Dashboard > Storage if needed.
