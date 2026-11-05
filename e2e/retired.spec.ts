@@ -152,3 +152,24 @@ test('a plain Member is offered no retire action and the RPC refuses them', asyn
   expect(r.error?.message).toBe('not allowed')
   await signOut(page)
 })
+
+test('MVA-251: a retired member with no tier on record gets a tier picker, not "tier not available"', async ({ page }) => {
+  const cmd = await seedUser('command', 'ret-nt-cmd')
+  const ret = await seedUser('member', 'ret-nt-mem')
+  const set = await admin().from('profiles').update({ status: 'retired', tier_id: null, retired_from_tier: null }).eq('id', ret.id)
+  expect(set.error).toBeNull()
+
+  await signIn(page, cmd)
+  await memberPage(page, ret)
+  await expect(page.getByRole('heading', { name: 'Return to the roster' })).toBeVisible()
+  // The picker is there from the start; there is no confirm-and-fail round trip.
+  await expect(page.getByText('Pick a tier to restore this member to')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Return to roster' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Return in this tier' })).toBeDisabled()
+  await page.getByLabel('Return as').selectOption({ label: 'Member' })
+  await page.getByRole('button', { name: 'Return in this tier' }).click()
+  await expect(page.getByRole('heading', { name: 'Return to the roster' })).toHaveCount(0)
+
+  const back = await admin().from('profiles').select('status,tier_id').eq('id', ret.id).single()
+  expect(back.data).toMatchObject({ status: 'approved', tier_id: await tierId('Member') })
+})
