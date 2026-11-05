@@ -108,6 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
     if (!error) return null
     // Only a real credentials failure says "incorrect"; a misconfigured or unreachable backend must not look like a typo.
+    if (error.code === 'email_not_confirmed') return 'Confirm your email first: open the link we sent you, then sign in.'
     return error.code === 'invalid_credentials' || error.status === 400
       ? 'Email or password is incorrect.'
       : 'Could not reach the sign-in service. Try again, and tell Command if it keeps happening.'

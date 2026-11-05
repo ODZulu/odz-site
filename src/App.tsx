@@ -16,11 +16,13 @@ import Designations from './pages/Designations'
 import DocumentDetail from './pages/DocumentDetail'
 import DocumentEdit from './pages/DocumentEdit'
 import Documents from './pages/Documents'
+import ForgotPassword from './pages/ForgotPassword'
 import Hq from './pages/Hq'
 import Join from './pages/Join'
 import Landing from './pages/Landing'
 import Login from './pages/Login'
 import Me from './pages/Me'
+import ResetPassword from './pages/ResetPassword'
 import RetiredHome from './pages/RetiredHome'
 import NotificationSettings from './pages/NotificationSettings'
 import Notifications from './pages/Notifications'
@@ -62,6 +64,8 @@ export default function App() {
       <Route element={<GateLayout />}>
         <Route path="/login" element={<Login />} />
         <Route path="/join/:code?" element={<Join />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route element={<Gate page="setup" />}>
           <Route path="/setup" element={<Setup />} />
         </Route>
