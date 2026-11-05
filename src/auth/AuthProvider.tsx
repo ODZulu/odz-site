@@ -1,6 +1,8 @@
 import type { Session } from '@supabase/supabase-js'
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useLocation } from 'react-router'
 import type { AccessState, AccountStatus } from '../lib/access'
+import { mustSignOut, sameSnapshot, shouldRefresh, TICK_MS, type RefreshTrigger } from '../lib/sessionRefresh'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 
 export type Profile = {
@@ -72,32 +74,85 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const uid = session?.user.id ?? null
 
+  const loadedRef = useRef<Loaded | null>(null)
+  const lastAt = useRef(0)
+  const inFlight = useRef(false)
+
+  const signOut = useCallback(async () => {
+    await supabase?.auth.signOut()
+    setLoaded(null)
+  }, [])
+
   const loadProfile = useCallback(async () => {
-    if (!supabase || !uid) return
-    const { data } = await supabase
-      .from('profiles')
-      .select('callsign,status,setup_complete,is_admin,tier_id')
-      .eq('id', uid)
-      .maybeSingle()
-    const profile = (data as Profile | null) ?? null
-    let tierName: string | null = null
-    let capabilities: string[] = []
-    if (profile?.status === 'approved') {
-      if (profile.tier_id) {
-        const tier = await supabase.from('tiers').select('name').eq('id', profile.tier_id).maybeSingle()
-        tierName = (tier.data as { name: string } | null)?.name ?? null
+    if (!supabase || !uid || inFlight.current) return
+    inFlight.current = true
+    try {
+      // On a refresh the previous values stand if a read fails: a flaky network must not look like a demotion.
+      const prev = loadedRef.current?.uid === uid ? loadedRef.current : null
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('callsign,status,setup_complete,is_admin,tier_id')
+        .eq('id', uid)
+        .maybeSingle()
+      if (error && prev) return
+      const profile = (data as Profile | null) ?? null
+      let tierName: string | null = null
+      let capabilities: string[] = []
+      if (profile?.status === 'approved') {
+        if (profile.tier_id) {
+          const tier = await supabase.from('tiers').select('name').eq('id', profile.tier_id).maybeSingle()
+          tierName = tier.error && prev ? prev.tierName : ((tier.data as { name: string } | null)?.name ?? null)
+        }
+        const caps = await supabase.rpc('my_capabilities')
+        capabilities = caps.error && prev ? prev.capabilities : Array.isArray(caps.data) ? (caps.data as string[]) : []
       }
-      const caps = await supabase.rpc('my_capabilities')
-      capabilities = Array.isArray(caps.data) ? (caps.data as string[]) : []
+      lastAt.current = Date.now()
+      if (prev && mustSignOut(profile?.status)) {
+        await signOut()
+        return
+      }
+      const next: Loaded = { uid, profile, tierName, capabilities }
+      // Same content: keep the old object so nothing re-renders (no flicker, no extra work).
+      setLoaded((p) => (p && p.uid === uid && sameSnapshot(p, next) ? p : next))
+    } finally {
+      inFlight.current = false
     }
-    setLoaded({ uid, profile, tierName, capabilities })
-  }, [uid])
+  }, [uid, signOut])
 
   useEffect(() => {
     void loadProfile()
   }, [loadProfile])
 
+  // Keep an open session honest (MVA-252): re-read on focus, on a route change after 60 s, and every 5 min.
+  const refresh = useCallback(
+    (trigger: RefreshTrigger) => {
+      if (!uid || !loadedRef.current || !shouldRefresh(trigger, Date.now(), lastAt.current)) return
+      void loadProfile()
+    },
+    [uid, loadProfile],
+  )
+
+  useEffect(() => {
+    if (!uid) return
+    const onFocus = () => refresh('focus')
+    const onVisible = () => document.visibilityState === 'visible' && refresh('focus')
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onVisible)
+    const timer = window.setInterval(() => document.visibilityState === 'visible' && refresh('interval'), TICK_MS)
+    return () => {
+      window.removeEventListener('focus', onFocus)
+      document.removeEventListener('visibilitychange', onVisible)
+      window.clearInterval(timer)
+    }
+  }, [uid, refresh])
+
+  const { pathname } = useLocation()
+  useEffect(() => {
+    refresh('route')
+  }, [pathname, refresh])
+
   const current = uid !== null && loaded?.uid === uid ? loaded : null
+  loadedRef.current = current
   const loading = !sessionReady || (uid !== null && current === null)
   const profile = current?.profile ?? null
   const capabilities = useMemo(() => current?.capabilities ?? [], [current])
@@ -111,11 +166,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return error.code === 'invalid_credentials' || error.status === 400
       ? 'Email or password is incorrect.'
       : 'Could not reach the sign-in service. Try again, and tell Command if it keeps happening.'
-  }, [])
-
-  const signOut = useCallback(async () => {
-    await supabase?.auth.signOut()
-    setLoaded(null)
   }, [])
 
   const value = useMemo<AuthValue>(
