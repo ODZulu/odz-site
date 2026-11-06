@@ -8,7 +8,7 @@ import { supabase } from './supabase'
 
 export const EVENT_TYPES = ['Game Day', 'Op', 'Training', 'Meeting', 'Other'] as const
 export type EventType = (typeof EVENT_TYPES)[number]
-export type EventStatus = 'scheduled' | 'cancelled'
+export type EventStatus = 'scheduled' | 'cancelled' | 'completed'
 
 /** What anyone may see (the `events` table): that an event exists. No location, no description. */
 export type PublicEvent = {
