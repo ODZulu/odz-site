@@ -22,6 +22,7 @@ import {
   type EventType,
   type PublicEvent,
 } from '../lib/events'
+import { EventMapToggle } from '../components/EventMapToggle'
 import { PinFields } from '../components/PinFields'
 import { ApplyCadence, CadencePanel } from '../components/CadencePanel'
 import { SeriesPanel } from '../components/SeriesPanel'
@@ -154,6 +155,7 @@ export default function Calendar() {
             <a href={osmLink(e.latitude, e.longitude)} target="_blank" rel="noopener noreferrer">View on OpenStreetMap</a>
           </p>
         )}
+        {detail && e.latitude != null && e.longitude != null && <EventMapToggle lat={e.latitude} lng={e.longitude} />}
         {detail && prepTimeline(events.data ?? [], e.id).length > 0 && (
           <details>
             <summary>{`Prep timeline (${prepTimeline(events.data ?? [], e.id).length})`}</summary>
