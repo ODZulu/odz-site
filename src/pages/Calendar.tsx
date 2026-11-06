@@ -16,13 +16,16 @@ import {
   updateEvent,
   validateEventForm,
   type EventDetails,
+  type EventAudience,
   type EventErrors,
   type EventForm,
   type EventType,
   type PublicEvent,
 } from '../lib/events'
 import { PinFields } from '../components/PinFields'
+import { SeriesPanel } from '../components/SeriesPanel'
 import { geoLink, osmLink } from '../lib/geo'
+import { AUDIENCE_LABEL } from '../lib/recurrence'
 import { Markdown } from '../lib/markdown'
 import { registrationMessage } from '../lib/registration'
 import { supabase } from '../lib/supabase'
@@ -44,6 +47,7 @@ function formFrom(e: AnyEvent): EventForm {
     longitude: e.longitude == null ? '' : String(e.longitude),
     hide_from_public_map: e.hide_from_public_map ?? false,
     completed: false,
+    audience: (e.audience ?? '') as EventAudience,
   }
 }
 
@@ -59,7 +63,7 @@ export default function Calendar() {
   const events = useLoad<AnyEvent[]>(() => (detail ? listEvents() : listPublicEvents()), [detail])
   // Events that use registration show it instead of RSVP and readiness (one "going" state per event, MVA-231).
   const registration = useLoad(async () => (detail ? await listRegistrationEventIds() : new Set<string>()), [detail])
-  const [editing, setEditing] = useState<{ id: string | null; form: EventForm } | null>(null)
+  const [editing, setEditing] = useState<{ id: string | null; form: EventForm; seriesId?: string | null } | null>(null)
   const [errors, setErrors] = useState<EventErrors>({})
   const [failure, setFailure] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -119,6 +123,7 @@ export default function Calendar() {
           <Chip variant="plain">{e.event_type.toUpperCase()}</Chip>
           {cancelled && <Chip variant="alert">CANCELLED</Chip>}
           {e.status === 'completed' && <Chip variant="plain">COMPLETED</Chip>}
+          {e.audience && <Chip variant="plain">{AUDIENCE_LABEL[e.audience].toUpperCase()}</Chip>}
         </div>
         <h3 className="odz-event__title">{e.title}</h3>
         {detail && e.location_name && <p className="odz-muted">{e.location_name}</p>}
@@ -146,8 +151,11 @@ export default function Calendar() {
         {detail && (registration.data?.has(e.id) ? <RegistrationToggle event={e} onChanged={() => void events.reload()} /> : e.status === 'completed' ? null : <RsvpToggle event={e} />)}
         {write && (
           <div className="odz-row" style={{ marginTop: '0.5rem' }}>
-            <Button small variant="sec" onClick={() => { setErrors({}); setEditing({ id: e.id, form: formFrom(e) }) }}>
+            <Button small variant="sec" onClick={() => { setErrors({}); setEditing({ id: e.id, form: formFrom(e), seriesId: e.series_id ?? null }) }}>
               Edit
+            </Button>
+            <Button small variant="sec" onClick={() => { setErrors({}); setEditing({ id: null, form: { ...formFrom(e), starts: '', ends: '', completed: false } }); window.scrollTo(0, 0) }}>
+              Duplicate
             </Button>
             {e.status === 'scheduled' && !registration.data?.has(e.id) && (
               <Button small variant="sec" onClick={() => void requireRegistration(e.id)}>
@@ -211,6 +219,18 @@ export default function Calendar() {
               <Field label="Location name" maxLength={120} value={editing.form.location_name} onChange={set('location_name')} error={errors.location_name} hint="Members only." />
               <Textarea label="Directions and address" maxLength={1000} value={editing.form.location_detail} onChange={set('location_detail')} error={errors.location_detail} hint="Members only." />
               <Textarea label="Description (markdown)" maxLength={5000} value={editing.form.description} onChange={set('description')} error={errors.description} hint="Members only. Plain markdown; no images or raw HTML." />
+              <Select
+                label="Who can see this event"
+                value={editing.form.audience}
+                onChange={(ev) => set('audience')({ target: { value: ev.target.value } })}
+                options={[
+                  { value: '', label: 'Everyone (public listing)' },
+                  { value: 'members', label: AUDIENCE_LABEL.members },
+                  { value: 'old_guard', label: AUDIENCE_LABEL.old_guard },
+                  { value: 'command', label: AUDIENCE_LABEL.command },
+                ]}
+              />
+              {editing.seriesId && <p className="odz-muted">This meeting belongs to a standing series. Saving here changes only this meeting; to change the series use Standing meetings below.</p>}
               <PinFields
                 latitude={editing.form.latitude}
                 longitude={editing.form.longitude}
@@ -235,6 +255,12 @@ export default function Calendar() {
               </div>
             </form>
           </Panel>
+        </div>
+      )}
+
+      {write && (
+        <div style={{ marginBottom: '1.25rem' }}>
+          <SeriesPanel onChanged={() => void events.reload()} />
         </div>
       )}
 

@@ -1,0 +1,887 @@
+-- MVA-228: recurring event series (standing meetings), audience-restricted events, and the
+-- support for duplicating an event.
+--
+-- AUDIENCE (the part that touches everything)
+--   * events.audience is null (public, as every event is today) or 'members', 'old_guard' or
+--     'command'. A restricted event is visible only to approved members of that audience (and
+--     Admin): the events SELECT policy checks it, so anon and lower tiers get no row at all.
+--     'members' = the Member tier and above; 'old_guard' = Old Guard and Command; 'command' = Command.
+--   * Everything that read events or announced them is made audience-aware, each function copied
+--     from its newest definition and named below: event_details' read policy, the "new event"
+--     notification and the reminders (events_notify, generate_reminders), the agenda publish
+--     notification and agenda visibility (publish_agenda, agenda_visible, agenda_level_visible), and
+--     the registration reads and writes from MVA-231 (event_register, event_withdraw,
+--     event_registration_info, event_registrants). event_recipients() gets an overload that takes
+--     the event and filters per profile.
+--
+-- SERIES
+--   * event_series: title, type, audience (always restricted: a standing meeting is never on the
+--     anon calendar), first date, local start time, duration, IANA timezone (default
+--     America/Phoenix, the team setting), a repeat rule (weekly every N weeks, or monthly on the Nth
+--     weekday, 5 = last), optional end date and occurrence count, optional location and description.
+--   * Instances are real events (events.series_id, series_date). Generation is ON READ and
+--     idempotent: event_series_roll() creates any missing instance up to 90 days ahead; the unique
+--     (series_id, series_date) makes a second run a no-op. The app calls it when the calendar opens.
+--     No scheduler is needed. Local times are built with `(date + time) at time zone tz`, so 19:00
+--     stays 19:00 across a daylight-saving change.
+--   * Instances do not announce themselves (13 weekly meetings would be 13 notifications each);
+--     reminders still fire for each one.
+--   * Editing one instance through the normal event form marks it series_edited, and series edits
+--     skip such instances. "Edit series" and "edit this and future" (event_series_update with a from
+--     date) update the series and every future, un-edited instance. Changing the repeat rule or the
+--     first date is not an edit: cancel the series and make a new one.
+--   * Cancelling a series cancels all future instances (edited or not) and stops generation; past
+--     instances are untouched.
+--
+-- Additive: new columns (events.audience, series_id, series_date, series_edited), one table, new
+-- functions, one unique constraint, policies recreated with the audience condition, and the
+-- functions named above redefined.
+
+------------------------------------------------------------------------------
+-- Columns
+------------------------------------------------------------------------------
+
+alter table public.events
+  add column audience text check (audience is null or audience in ('members', 'old_guard', 'command')),
+  add column series_id uuid,
+  add column series_date date,
+  add column series_edited boolean not null default false;
+
+------------------------------------------------------------------------------
+-- Audience checks
+------------------------------------------------------------------------------
+
+-- Is this profile in the audience? (null audience = everyone, including anon.)
+create function public.profile_in_audience(p_profile uuid, p_audience text)
+returns boolean
+language sql stable security definer set search_path = ''
+as $$
+  select p_audience is null or exists (
+    select 1 from public.profiles p
+    left join public.tiers t on t.id = p.tier_id
+    where p.id = p_profile and p.status = 'approved'
+      and (
+        p.is_admin
+        or (p_audience = 'command' and t.seat_group = 'command')
+        or (p_audience = 'old_guard' and t.seat_group in ('command', 'old_guard'))
+        or (p_audience = 'members' and t.rank <= (select m.rank from public.tiers m where m.name = 'Member'))
+      )
+  )
+$$;
+
+-- The caller. anon needs EXECUTE because the events policy calls it.
+create function public.event_audience_ok(p_audience text)
+returns boolean
+language sql stable security definer set search_path = ''
+as $$
+  select p_audience is null or public.profile_in_audience(auth.uid(), p_audience)
+$$;
+
+-- Can the caller see this event (by id)? Used by the definer functions that bypass the policy.
+create function public.event_visible(p_event uuid)
+returns boolean
+language sql stable security definer set search_path = ''
+as $$
+  select exists (select 1 from public.events e where e.id = p_event and public.event_audience_ok(e.audience))
+$$;
+
+-- Who is told about an event: event_recipients() filtered to the event's audience.
+create function public.event_recipients(p_event uuid)
+returns table (profile_id uuid)
+language sql stable security definer set search_path = ''
+as $$
+  select r.profile_id
+  from public.event_recipients() r
+  join public.events e on e.id = p_event
+  where public.profile_in_audience(r.profile_id, e.audience)
+$$;
+
+revoke all on function public.profile_in_audience(uuid, text) from public, anon, authenticated;
+revoke all on function public.event_audience_ok(text) from public;
+revoke all on function public.event_visible(uuid) from public, anon;
+revoke all on function public.event_recipients(uuid) from public, anon, authenticated;
+grant execute on function public.event_audience_ok(text) to anon, authenticated;
+grant execute on function public.event_visible(uuid) to authenticated;
+-- anon's policy evaluation reads the column.
+grant select (audience) on public.events to anon;
+
+------------------------------------------------------------------------------
+-- RLS: restricted events are invisible below their audience
+------------------------------------------------------------------------------
+
+drop policy events_select on public.events;
+create policy events_select on public.events
+  for select to anon, authenticated using (public.event_audience_ok(audience));
+
+-- Copied from 20261011210000_event_details.sql, plus the event must be visible to the caller.
+drop policy event_details_select on public.event_details;
+create policy event_details_select on public.event_details
+  for select to authenticated
+  using (
+    public.has_capability('read_event_details')
+    and exists (select 1 from public.events e where e.id = event_details.event_id)
+  );
+
+------------------------------------------------------------------------------
+-- Series table (writes only through the RPCs below)
+------------------------------------------------------------------------------
+
+create table public.event_series (
+  id uuid primary key default gen_random_uuid(),
+  title text not null check (length(btrim(title)) between 1 and 120),
+  event_type text not null default 'Meeting' check (event_type in ('Game Day', 'Op', 'Training', 'Meeting', 'Other')),
+  audience text not null check (audience in ('members', 'old_guard', 'command')),
+  first_date date not null,
+  start_time time not null,
+  duration_minutes integer not null check (duration_minutes between 15 and 1440),
+  timezone text not null default 'America/Phoenix',
+  rule text not null check (rule in ('weekly', 'monthly_weekday')),
+  interval_weeks integer not null default 1 check (interval_weeks between 1 and 52),
+  nth smallint check (nth is null or nth between 1 and 5),
+  until_date date,
+  max_count integer check (max_count is null or max_count between 1 and 500),
+  location_name text check (location_name is null or length(location_name) <= 120),
+  description text check (description is null or length(description) <= 5000),
+  status text not null default 'active' check (status in ('active', 'cancelled')),
+  created_by uuid default auth.uid(),
+  created_at timestamptz not null default now(),
+  constraint event_series_rule_shape check ((rule = 'monthly_weekday') = (nth is not null)),
+  constraint event_series_until check (until_date is null or until_date >= first_date)
+);
+
+alter table public.events
+  add constraint events_series_fk foreign key (series_id) references public.event_series (id) on delete set null,
+  add constraint events_series_unique unique (series_id, series_date);
+
+alter table public.event_series enable row level security;
+revoke all on public.event_series from anon, authenticated;
+grant select on public.event_series to authenticated;
+create policy event_series_select on public.event_series
+  for select to authenticated
+  using (public.has_capability('write_events') or public.event_audience_ok(audience));
+
+------------------------------------------------------------------------------
+-- Marking individually edited instances
+------------------------------------------------------------------------------
+
+create function public.events_series_edited()
+returns trigger
+language plpgsql set search_path = ''
+as $$
+begin
+  if old.series_id is not null
+     and coalesce(current_setting('odz.series_edit', true), '') <> '1'
+     and (new.title, new.event_type, new.starts_at, new.ends_at) is distinct from (old.title, old.event_type, old.starts_at, old.ends_at) then
+    new.series_edited := true;
+  end if;
+  return new;
+end;
+$$;
+
+create trigger events_series_edited
+  before update on public.events
+  for each row execute function public.events_series_edited();
+
+create function public.event_details_series_edited()
+returns trigger
+language plpgsql security definer set search_path = ''
+as $$
+begin
+  if coalesce(current_setting('odz.series_edit', true), '') <> '1'
+     and (new.location_name, new.location_detail, new.description) is distinct from (old.location_name, old.location_detail, old.description) then
+    update public.events set series_edited = true where id = new.event_id and series_id is not null and not series_edited;
+  end if;
+  return null;
+end;
+$$;
+
+create trigger event_details_series_edited
+  after update on public.event_details
+  for each row execute function public.event_details_series_edited();
+
+revoke all on function public.events_series_edited() from public, anon, authenticated;
+revoke all on function public.event_details_series_edited() from public, anon, authenticated;
+
+------------------------------------------------------------------------------
+-- Generation
+------------------------------------------------------------------------------
+
+-- The date of the Nth weekday (dow 0 = Sunday) of a month; nth 5 means the last one.
+create function public.nth_weekday(p_year integer, p_month integer, p_dow integer, p_nth integer)
+returns date
+language plpgsql immutable set search_path = ''
+as $$
+declare
+  d date := make_date(p_year, p_month, 1);
+begin
+  if p_nth = 5 then
+    d := (d + interval '1 month' - interval '1 day')::date;
+    return d - ((extract(dow from d)::integer - p_dow + 7) % 7);
+  end if;
+  return d + ((p_dow - extract(dow from d)::integer + 7) % 7) + (p_nth - 1) * 7;
+end;
+$$;
+
+-- Creates any missing instances from p_today to 90 days later. Idempotent. Internal: the tests
+-- pass a fixed p_today to cross a daylight-saving change.
+create function public.event_series_generate(p_series uuid, p_today date)
+returns integer
+language plpgsql security definer set search_path = ''
+as $$
+declare
+  s public.event_series;
+  v_dow integer;
+  v_horizon date := p_today + 90;
+  v_date date;
+  v_k integer := 0;
+  v_count integer := 0;
+  v_made integer := 0;
+  v_ev uuid;
+  v_start timestamptz;
+  v_year integer;
+  v_month integer;
+begin
+  select * into s from public.event_series where id = p_series;
+  if not found or s.status <> 'active' then
+    return 0;
+  end if;
+  v_dow := extract(dow from s.first_date)::integer;
+  v_year := extract(year from s.first_date)::integer;
+  v_month := extract(month from s.first_date)::integer;
+
+  while v_k < 5000 loop
+    if s.rule = 'weekly' then
+      v_date := s.first_date + v_k * 7 * s.interval_weeks;
+    else
+      v_date := public.nth_weekday(v_year + (v_month - 1 + v_k) / 12, ((v_month - 1 + v_k) % 12) + 1, v_dow, s.nth);
+      if v_date < s.first_date then
+        v_k := v_k + 1;
+        continue;
+      end if;
+    end if;
+    v_k := v_k + 1;
+    exit when v_date > v_horizon;
+    exit when s.until_date is not null and v_date > s.until_date;
+    v_count := v_count + 1;
+    exit when s.max_count is not null and v_count > s.max_count;
+    continue when v_date < p_today;
+
+    v_start := (v_date + s.start_time) at time zone s.timezone;
+    insert into public.events (title, event_type, starts_at, ends_at, audience, series_id, series_date)
+    values (s.title, s.event_type, v_start, v_start + s.duration_minutes * interval '1 minute', s.audience, s.id, v_date)
+    on conflict (series_id, series_date) do nothing
+    returning id into v_ev;
+    if v_ev is not null then
+      v_made := v_made + 1;
+      if s.location_name is not null or s.description is not null then
+        insert into public.event_details (event_id, location_name, description)
+        values (v_ev, s.location_name, s.description);
+      end if;
+      v_ev := null;
+    end if;
+  end loop;
+  return v_made;
+end;
+$$;
+
+-- On-read generation for every active series. Safe for any member to call; it only fills in
+-- instances that are missing.
+create function public.event_series_roll()
+returns integer
+language plpgsql security definer set search_path = ''
+as $$
+declare
+  r record;
+  n integer := 0;
+begin
+  if not public.current_user_is_approved() then
+    return 0;
+  end if;
+  for r in select id, timezone from public.event_series where status = 'active' loop
+    n := n + public.event_series_generate(r.id, (now() at time zone r.timezone)::date);
+  end loop;
+  return n;
+end;
+$$;
+
+revoke all on function public.nth_weekday(integer, integer, integer, integer) from public, anon;
+revoke all on function public.event_series_generate(uuid, date) from public, anon, authenticated;
+revoke all on function public.event_series_roll() from public, anon;
+grant execute on function public.nth_weekday(integer, integer, integer, integer) to authenticated;
+grant execute on function public.event_series_roll() to authenticated;
+
+------------------------------------------------------------------------------
+-- Command: create, edit, cancel, list
+------------------------------------------------------------------------------
+
+create function public.event_series_create(
+  p_title text, p_event_type text, p_audience text, p_first_date date, p_start_time time,
+  p_duration_minutes integer, p_timezone text, p_rule text, p_interval_weeks integer, p_nth integer,
+  p_until date, p_max_count integer, p_location_name text, p_description text
+)
+returns uuid
+language plpgsql security definer set search_path = ''
+as $$
+declare
+  v_id uuid;
+  v_tz text := coalesce(nullif(btrim(p_timezone), ''), 'America/Phoenix');
+begin
+  if not public.has_capability('write_events') then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  if length(btrim(coalesce(p_title, ''))) < 1 or length(btrim(p_title)) > 120 then
+    raise exception 'invalid_title' using errcode = 'P0001';
+  end if;
+  if p_audience is null or p_audience not in ('members', 'old_guard', 'command') then
+    raise exception 'invalid_audience' using errcode = 'P0001';
+  end if;
+  if p_first_date is null or p_start_time is null then
+    raise exception 'invalid_date' using errcode = 'P0001';
+  end if;
+  if p_duration_minutes is null or p_duration_minutes < 15 or p_duration_minutes > 1440 then
+    raise exception 'invalid_duration' using errcode = 'P0001';
+  end if;
+  if not exists (select 1 from pg_timezone_names n where n.name = v_tz) then
+    raise exception 'invalid_timezone' using errcode = 'P0001';
+  end if;
+  if p_rule not in ('weekly', 'monthly_weekday') then
+    raise exception 'invalid_rule' using errcode = 'P0001';
+  end if;
+  if p_rule = 'weekly' and (p_interval_weeks is null or p_interval_weeks < 1 or p_interval_weeks > 52) then
+    raise exception 'invalid_interval' using errcode = 'P0001';
+  end if;
+  if p_rule = 'monthly_weekday' and (p_nth is null or p_nth < 1 or p_nth > 5) then
+    raise exception 'invalid_nth' using errcode = 'P0001';
+  end if;
+  if p_until is not null and p_until < p_first_date then
+    raise exception 'invalid_end' using errcode = 'P0001';
+  end if;
+  if p_max_count is not null and (p_max_count < 1 or p_max_count > 500) then
+    raise exception 'invalid_end' using errcode = 'P0001';
+  end if;
+
+  insert into public.event_series
+    (title, event_type, audience, first_date, start_time, duration_minutes, timezone, rule,
+     interval_weeks, nth, until_date, max_count, location_name, description)
+  values (btrim(p_title), coalesce(p_event_type, 'Meeting'), p_audience, p_first_date, p_start_time, p_duration_minutes, v_tz,
+          p_rule, case when p_rule = 'weekly' then p_interval_weeks else 1 end,
+          case when p_rule = 'monthly_weekday' then p_nth::smallint end, p_until, p_max_count,
+          nullif(btrim(coalesce(p_location_name, '')), ''), nullif(btrim(coalesce(p_description, '')), ''))
+  returning id into v_id;
+  perform public.event_series_generate(v_id, (now() at time zone v_tz)::date);
+  insert into public.settings_audit (actor_id, event, target, detail)
+  values (auth.uid(), 'event_series_created', btrim(p_title), null);
+  return v_id;
+end;
+$$;
+
+-- Edit the series and every future, un-edited instance (from p_from_date on, or all of them).
+create function public.event_series_update(
+  p_series uuid, p_title text, p_event_type text, p_audience text, p_start_time time,
+  p_duration_minutes integer, p_timezone text, p_until date, p_max_count integer,
+  p_location_name text, p_description text, p_from_date date
+)
+returns integer
+language plpgsql security definer set search_path = ''
+as $$
+declare
+  s public.event_series;
+  v_tz text := coalesce(nullif(btrim(p_timezone), ''), 'America/Phoenix');
+  r record;
+  n integer := 0;
+  v_start timestamptz;
+begin
+  if not public.has_capability('write_events') then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  select * into s from public.event_series where id = p_series for update;
+  if not found then
+    raise exception 'not found' using errcode = 'P0002';
+  end if;
+  if s.status <> 'active' then
+    raise exception 'series_cancelled' using errcode = 'P0001';
+  end if;
+  if length(btrim(coalesce(p_title, ''))) < 1 or length(btrim(p_title)) > 120 then
+    raise exception 'invalid_title' using errcode = 'P0001';
+  end if;
+  if p_audience is null or p_audience not in ('members', 'old_guard', 'command') then
+    raise exception 'invalid_audience' using errcode = 'P0001';
+  end if;
+  if p_start_time is null or p_duration_minutes is null or p_duration_minutes < 15 or p_duration_minutes > 1440 then
+    raise exception 'invalid_duration' using errcode = 'P0001';
+  end if;
+  if not exists (select 1 from pg_timezone_names z where z.name = v_tz) then
+    raise exception 'invalid_timezone' using errcode = 'P0001';
+  end if;
+  if (p_until is not null and p_until < s.first_date) or (p_max_count is not null and (p_max_count < 1 or p_max_count > 500)) then
+    raise exception 'invalid_end' using errcode = 'P0001';
+  end if;
+
+  update public.event_series
+     set title = btrim(p_title), event_type = coalesce(p_event_type, event_type), audience = p_audience,
+         start_time = p_start_time, duration_minutes = p_duration_minutes, timezone = v_tz,
+         until_date = p_until, max_count = p_max_count,
+         location_name = nullif(btrim(coalesce(p_location_name, '')), ''),
+         description = nullif(btrim(coalesce(p_description, '')), '')
+   where id = p_series
+   returning * into s;
+
+  perform set_config('odz.series_edit', '1', true);
+  for r in
+    select id, series_date from public.events
+    where series_id = p_series and not series_edited and starts_at > now()
+      and (p_from_date is null or series_date >= p_from_date)
+  loop
+    v_start := (r.series_date + s.start_time) at time zone s.timezone;
+    update public.events
+       set title = s.title, event_type = s.event_type, audience = s.audience, starts_at = v_start,
+           ends_at = v_start + s.duration_minutes * interval '1 minute'
+     where id = r.id;
+    insert into public.event_details (event_id, location_name, description)
+    values (r.id, s.location_name, s.description)
+    on conflict (event_id) do update set location_name = excluded.location_name, description = excluded.description;
+    n := n + 1;
+  end loop;
+  perform set_config('odz.series_edit', '', true);
+
+  perform public.event_series_generate(p_series, (now() at time zone s.timezone)::date);
+  return n;
+end;
+$$;
+
+create function public.event_series_cancel(p_series uuid)
+returns integer
+language plpgsql security definer set search_path = ''
+as $$
+declare
+  s public.event_series;
+  n integer;
+begin
+  if not public.has_capability('write_events') then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  select * into s from public.event_series where id = p_series for update;
+  if not found then
+    raise exception 'not found' using errcode = 'P0002';
+  end if;
+  if s.status = 'cancelled' then
+    raise exception 'series_cancelled' using errcode = 'P0001';
+  end if;
+  update public.event_series set status = 'cancelled' where id = p_series;
+  perform set_config('odz.series_edit', '1', true);
+  update public.events set status = 'cancelled'
+   where series_id = p_series and starts_at > now() and status = 'scheduled';
+  get diagnostics n = row_count;
+  perform set_config('odz.series_edit', '', true);
+  insert into public.settings_audit (actor_id, event, target, detail)
+  values (auth.uid(), 'event_series_cancelled', s.title, null);
+  return n;
+end;
+$$;
+
+create function public.event_series_list()
+returns table (
+  id uuid, title text, event_type text, audience text, first_date date, start_time time,
+  duration_minutes integer, timezone text, rule text, interval_weeks integer, nth smallint,
+  until_date date, max_count integer, location_name text, description text, status text,
+  next_starts_at timestamptz
+)
+language plpgsql security definer set search_path = ''
+as $$
+begin
+  if not public.has_capability('write_events') then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  return query
+    select s.id, s.title, s.event_type, s.audience, s.first_date, s.start_time, s.duration_minutes, s.timezone,
+           s.rule, s.interval_weeks, s.nth, s.until_date, s.max_count, s.location_name, s.description, s.status,
+           (select min(e.starts_at) from public.events e
+             where e.series_id = s.id and e.status = 'scheduled' and e.starts_at > now())
+    from public.event_series s
+    order by s.status, s.title;
+end;
+$$;
+
+-- Set or clear who a single event is for (a duplicate keeps the source event's audience).
+create function public.event_set_audience(p_event uuid, p_audience text)
+returns void
+language plpgsql security definer set search_path = ''
+as $$
+begin
+  if not public.has_capability('write_events') then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  if p_audience is not null and p_audience not in ('members', 'old_guard', 'command') then
+    raise exception 'invalid_audience' using errcode = 'P0001';
+  end if;
+  update public.events set audience = p_audience where id = p_event;
+  if not found then
+    raise exception 'not found' using errcode = 'P0002';
+  end if;
+end;
+$$;
+
+revoke all on function public.event_series_create(text, text, text, date, time, integer, text, text, integer, integer, date, integer, text, text) from public, anon;
+revoke all on function public.event_series_update(uuid, text, text, text, time, integer, text, date, integer, text, text, date) from public, anon;
+revoke all on function public.event_series_cancel(uuid) from public, anon;
+revoke all on function public.event_series_list() from public, anon;
+revoke all on function public.event_set_audience(uuid, text) from public, anon;
+grant execute on function public.event_series_create(text, text, text, date, time, integer, text, text, integer, integer, date, integer, text, text) to authenticated;
+grant execute on function public.event_series_update(uuid, text, text, text, time, integer, text, date, integer, text, text, date) to authenticated;
+grant execute on function public.event_series_cancel(uuid) to authenticated;
+grant execute on function public.event_series_list() to authenticated;
+grant execute on function public.event_set_audience(uuid, text) to authenticated;
+
+------------------------------------------------------------------------------
+-- Audience-aware redefinitions. Each is copied from the migration named and changed only where noted.
+------------------------------------------------------------------------------
+
+-- events_notify: audience-aware recipients; series instances stay quiet. Source: 20261011190000_notifications.sql.
+create or replace function public.events_notify()
+returns trigger
+language plpgsql security definer set search_path = ''
+as $$
+declare
+  actor uuid := auth.uid();
+begin
+  if tg_op = 'INSERT' then
+    -- Series instances do not announce themselves (MVA-228); reminders still fire.
+    if new.status = 'scheduled' and new.starts_at > now() and new.series_id is null then
+      insert into public.notifications (profile_id, kind, title, body, link)
+      select rec.profile_id, 'new', new.title, 'Starts ' || public.phoenix_stamp(new.starts_at), '/calendar'
+      from public.event_recipients(new.id) rec
+      where rec.profile_id is distinct from actor;
+    end if;
+  elsif new.status = 'cancelled' and old.status <> 'cancelled' then
+    -- Cancelling a whole series is one decision, not one notice per meeting.
+    if coalesce(current_setting('odz.series_edit', true), '') = '1' then
+      return null;
+    end if;
+    insert into public.notifications (profile_id, kind, title, body, link)
+    select rec.profile_id, 'cancelled', new.title, 'Cancelled. Was ' || public.phoenix_stamp(old.starts_at), '/calendar'
+    from public.event_recipients(new.id) rec
+    where rec.profile_id is distinct from actor;
+  elsif new.status = 'scheduled' and new.starts_at is distinct from old.starts_at and new.starts_at > now() then
+    -- A moved event gets fresh reminders for its new time.
+    delete from public.reminder_log where event_id = new.id;
+    insert into public.notifications (profile_id, kind, title, body, link)
+    select rec.profile_id, 'changed', new.title, 'Now ' || public.phoenix_stamp(new.starts_at), '/calendar'
+    from public.event_recipients(new.id) rec
+    where rec.profile_id is distinct from actor;
+  end if;
+  return null;
+end;
+$$;
+
+-- generate_reminders: reminders go only to the event's audience. Source: 20261011190000_notifications.sql.
+create or replace function public.generate_reminders(p_now timestamptz default now())
+returns integer
+language plpgsql security definer set search_path = ''
+as $$
+declare
+  made integer := 0;
+  r record;
+begin
+  for r in
+    select e.id as event_id, e.title, e.starts_at, rec.profile_id, ld.minutes as lead_min
+    from public.events e
+    cross join lateral public.event_recipients(e.id) rec
+    left join public.notification_prefs np on np.profile_id = rec.profile_id
+    cross join lateral unnest(coalesce(np.lead_minutes, '{1440,120}'::integer[])) as ld(minutes)
+    where e.status = 'scheduled'
+      and e.starts_at > p_now
+      and p_now >= e.starts_at - ld.minutes * interval '1 minute'
+      and p_now <  e.starts_at - ld.minutes * interval '1 minute' + interval '15 minutes'
+  loop
+    insert into public.reminder_log (event_id, profile_id, lead_minutes, channel, sent_at)
+    values (r.event_id, r.profile_id, r.lead_min, 'in_app', p_now)
+    on conflict do nothing;
+    if found then
+      insert into public.notifications (profile_id, kind, title, body, link)
+      values (r.profile_id, 'reminder', r.title, 'Starts ' || public.phoenix_stamp(r.starts_at), '/calendar');
+      made := made + 1;
+    end if;
+  end loop;
+  return made;
+end;
+$$;
+
+-- publish_agenda: the notice goes to the event's audience. Source: 20261103160000_meeting_agendas.sql.
+create or replace function public.publish_agenda(p_agenda uuid)
+returns integer
+language plpgsql security definer set search_path = ''
+as $$
+declare
+  a public.agendas;
+  ev public.events;
+  n integer;
+  republish boolean;
+begin
+  if not public.has_capability('write_events') then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  select * into a from public.agendas where id = p_agenda for update;
+  if not found then
+    raise exception 'not_found' using errcode = 'P0001';
+  end if;
+  select * into ev from public.events where id = a.event_id;
+  if ev.status = 'cancelled' then
+    raise exception 'event_cancelled' using errcode = 'P0001';
+  end if;
+  republish := a.status = 'published';
+
+  select count(*) into n from public.agenda_items where agenda_id = p_agenda;
+  if n = 0 then
+    raise exception 'empty_agenda' using errcode = 'P0001';
+  end if;
+  if republish and not exists (
+    select 1 from public.agenda_items where agenda_id = p_agenda and edited_since_publish
+  ) then
+    raise exception 'nothing_to_publish' using errcode = 'P0001';
+  end if;
+
+  n := a.publish_count + 1;
+  update public.agendas
+    set status = 'published', publish_count = n, published_at = now()
+  where id = p_agenda;
+  -- Items edited since the last publish carry the "updated" mark for this one.
+  update public.agenda_items
+    set updated_in_publish = n, edited_since_publish = false
+  where agenda_id = p_agenda and edited_since_publish;
+
+  insert into public.agenda_publish_log (agenda_id, action, actor_id, actor_callsign)
+  values (p_agenda, case when republish then 'republished' else 'published' end, auth.uid(),
+          (select callsign from public.profiles where id = auth.uid()));
+
+  insert into public.notifications (profile_id, kind, title, body, link)
+  select r.profile_id, 'agenda',
+         left(case when republish then 'Agenda updated: ' else 'Agenda published: ' end || ev.title, 200),
+         case when republish then 'The agenda for this meeting changed.' else 'The agenda for this meeting is ready.' end,
+         '/agenda/' || a.event_id::text
+  from public.event_recipients(a.event_id) r;
+  return n;
+end;
+$$;
+
+-- agenda_visible: a published agenda of a restricted event is visible only to its audience. Source: 20261103160000_meeting_agendas.sql.
+create or replace function public.agenda_visible(p_agenda uuid)
+returns boolean
+language sql stable security definer set search_path = ''
+as $$
+  select exists (
+    select 1 from public.agendas a
+    where a.id = p_agenda
+      and (public.agenda_manager() or (a.status = 'published' and public.has_capability('read_event_details') and public.event_visible(a.event_id)))
+  )
+$$;
+
+-- agenda_level_visible: same condition. Source: 20261103160000_meeting_agendas.sql.
+create or replace function public.agenda_level_visible(p_agenda uuid, p_visibility text, p_presenter uuid)
+returns boolean
+language sql stable security definer set search_path = ''
+as $$
+  select exists (
+    select 1
+    from public.agendas a
+    where a.id = p_agenda
+      and (
+        public.agenda_manager()
+        or (
+          a.status = 'published'
+          and public.event_visible(a.event_id)
+          and (
+            (p_visibility = 'members' and public.has_capability('read_event_details'))
+            or (p_visibility = 'presenter' and p_presenter = auth.uid() and public.current_user_is_approved())
+          )
+        )
+      )
+  )
+$$;
+
+-- event_register: the event must be visible to the caller. Source: 20261106130000_event_registration.sql.
+create or replace function public.event_register(p_event uuid)
+returns text
+language plpgsql security definer set search_path = ''
+as $$
+declare
+  e public.events;
+  s public.event_registration_settings;
+  r public.event_registrations;
+  v_state text;
+begin
+  if not public.has_capability('read_event_details') then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  if not public.event_visible(p_event) then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  select * into s from public.event_registration_settings where event_id = p_event for update;
+  if not found then
+    raise exception 'registration_off' using errcode = 'P0001';
+  end if;
+  select * into e from public.events where id = p_event;
+  if e.status <> 'scheduled' or e.starts_at <= now() then
+    raise exception 'closed' using errcode = 'P0001';
+  end if;
+  if now() < s.opens_at then
+    raise exception 'not_open' using errcode = 'P0001';
+  end if;
+  if s.closes_at is not null and now() >= s.closes_at then
+    raise exception 'closed' using errcode = 'P0001';
+  end if;
+  select * into r from public.event_registrations where event_id = p_event and profile_id = auth.uid();
+  if found and r.state <> 'withdrawn' then
+    raise exception 'already_registered' using errcode = 'P0001';
+  end if;
+
+  v_state := case when s.capacity is null or public.registration_taken(p_event) < s.capacity then 'registered' else 'waitlisted' end;
+  if found then
+    update public.event_registrations
+       set state = v_state, registered_at = now(), withdraw_requested_at = null, attendance = null,
+           attendance_by = null, attendance_at = null, updated_at = now()
+     where event_id = p_event and profile_id = auth.uid();
+  else
+    insert into public.event_registrations (event_id, profile_id, state) values (p_event, auth.uid(), v_state);
+  end if;
+  return v_state;
+end;
+$$;
+
+-- event_withdraw: the event must be visible to the caller. Source: 20261106130000_event_registration.sql.
+create or replace function public.event_withdraw(p_event uuid)
+returns text
+language plpgsql security definer set search_path = ''
+as $$
+declare
+  e public.events;
+  s public.event_registration_settings;
+  r public.event_registrations;
+begin
+  if not public.has_capability('read_event_details') then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  if not public.event_visible(p_event) then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  select * into s from public.event_registration_settings where event_id = p_event for update;
+  if not found then
+    raise exception 'registration_off' using errcode = 'P0001';
+  end if;
+  select * into e from public.events where id = p_event;
+  if e.status <> 'scheduled' or e.starts_at <= now() then
+    raise exception 'closed' using errcode = 'P0001';
+  end if;
+  select * into r from public.event_registrations where event_id = p_event and profile_id = auth.uid() for update;
+  if not found or r.state = 'withdrawn' then
+    raise exception 'not_registered' using errcode = 'P0001';
+  end if;
+  if r.state = 'withdrawal_requested' then
+    raise exception 'already_requested' using errcode = 'P0001';
+  end if;
+
+  if r.state = 'waitlisted' or now() < s.withdraw_cutoff_at then
+    update public.event_registrations set state = 'withdrawn', updated_at = now()
+     where event_id = p_event and profile_id = auth.uid();
+    perform public.registration_fill(p_event);
+    return 'withdrawn';
+  end if;
+  -- After the cutoff: ask. The member keeps the place until Command decides.
+  update public.event_registrations
+     set state = 'withdrawal_requested', withdraw_requested_at = now(), updated_at = now()
+   where event_id = p_event and profile_id = auth.uid();
+  perform public.registration_log_add(p_event, auth.uid(), 'withdrawal_requested', null);
+  return 'withdrawal_requested';
+end;
+$$;
+
+-- event_registration_info: the event must be visible to the caller. Source: 20261106130000_event_registration.sql.
+create or replace function public.event_registration_info(p_event uuid)
+returns table (
+  opens_at timestamptz, closes_at timestamptz, capacity integer, withdraw_cutoff_at timestamptz,
+  confirmed boolean, registered_count integer, waitlist_count integer,
+  no_show_count integer, excused_count integer, attended_count integer,
+  unmarked_count integer, withdrawal_requests integer,
+  my_state text, my_attendance text, my_position integer
+)
+language plpgsql security definer set search_path = ''
+as $$
+declare
+  s public.event_registration_settings;
+  priv boolean;
+begin
+  if not public.has_capability('read_event_details') then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  if not public.event_visible(p_event) then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  select * into s from public.event_registration_settings where event_id = p_event;
+  if not found then
+    return;
+  end if;
+  priv := public.registration_privileged();
+  return query
+    select s.opens_at, s.closes_at, s.capacity, s.withdraw_cutoff_at,
+      s.attendance_confirmed_at is not null,
+      public.registration_taken(p_event),
+      (select count(*)::integer from public.event_registrations r where r.event_id = p_event and r.state = 'waitlisted'),
+      case when priv then (select count(*)::integer from public.event_registrations r where r.event_id = p_event and r.attendance = 'no_show') end,
+      case when priv then (select count(*)::integer from public.event_registrations r where r.event_id = p_event and r.attendance = 'excused') end,
+      case when priv then (select count(*)::integer from public.event_registrations r where r.event_id = p_event and r.attendance = 'attended') end,
+      case when priv then (select count(*)::integer from public.event_registrations r
+                            where r.event_id = p_event and not r.walk_in and r.state in ('registered', 'withdrawal_requested') and r.attendance is null) end,
+      case when priv then (select count(*)::integer from public.event_registrations r where r.event_id = p_event and r.state = 'withdrawal_requested') end,
+      (select r.state from public.event_registrations r where r.event_id = p_event and r.profile_id = auth.uid()),
+      (select r.attendance from public.event_registrations r where r.event_id = p_event and r.profile_id = auth.uid()
+         and s.attendance_confirmed_at is not null),
+      (select x.pos::integer from (
+         select r.profile_id, row_number() over (order by r.registered_at, r.profile_id) as pos
+         from public.event_registrations r where r.event_id = p_event and r.state = 'waitlisted'
+       ) x where x.profile_id = auth.uid());
+end;
+$$;
+
+-- event_registrants: the event must be visible to the caller. Source: 20261106130000_event_registration.sql.
+create or replace function public.event_registrants(p_event uuid)
+returns table (profile_id uuid, callsign text, state text, registered_at timestamptz, attendance text, waitlist_position integer, walk_in boolean)
+language plpgsql security definer set search_path = ''
+as $$
+declare
+  priv boolean;
+begin
+  if not public.has_capability('read_event_details') then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  if not public.event_visible(p_event) then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  priv := public.registration_privileged();
+  if not priv and not exists (
+    select 1 from public.event_registrations r
+    where r.event_id = p_event and r.profile_id = auth.uid() and r.state in ('registered', 'waitlisted', 'withdrawal_requested')
+  ) then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  return query
+    select r.profile_id, p.callsign, r.state, r.registered_at,
+           case when priv then r.attendance end,
+           case when r.state = 'waitlisted'
+                then (row_number() over (partition by (r.state = 'waitlisted') order by r.registered_at, r.profile_id))::integer end,
+           r.walk_in
+    from public.event_registrations r
+    join public.profiles p on p.id = r.profile_id
+    where r.event_id = p_event
+      and (priv or (r.state <> 'withdrawn' and not r.walk_in))
+    order by (r.state = 'waitlisted'), r.registered_at, r.profile_id;
+end;
+$$;
+
+-- agendas_select: a published agenda of a restricted event is visible only to its audience.
+-- Policy copied from 20261103160000_meeting_agendas.sql, plus the event_visible() condition.
+drop policy agendas_select on public.agendas;
+create policy agendas_select on public.agendas
+  for select to authenticated
+  using (
+    public.agenda_manager()
+    or (status = 'published' and public.has_capability('read_event_details') and public.event_visible(event_id))
+  );

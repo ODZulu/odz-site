@@ -10,6 +10,8 @@ import { supabase } from './supabase'
 export const EVENT_TYPES = ['Game Day', 'Op', 'Training', 'Meeting', 'Other'] as const
 export type EventType = (typeof EVENT_TYPES)[number]
 export type EventStatus = 'scheduled' | 'cancelled' | 'completed'
+/** Who a restricted event is for (MVA-228). Empty/null means public, as every event was before. */
+export type EventAudience = '' | 'members' | 'old_guard' | 'command'
 
 /** What anyone may see (the `events` table): that an event exists. No location, no description. */
 export type PublicEvent = {
@@ -19,6 +21,11 @@ export type PublicEvent = {
   starts_at: string
   ends_at: string | null
   status: EventStatus
+  /** Present for signed-in readers (the anon column set is unchanged). */
+  audience?: EventAudience | null
+  series_id?: string | null
+  series_date?: string | null
+  series_edited?: boolean
 }
 
 /** Members with read_event_details also get the `event_details` row (location, directions, description). */
@@ -47,6 +54,7 @@ export type EventForm = {
   hide_from_public_map: boolean
   /** Backfill: a past event recorded as completed. */
   completed: boolean
+  audience: EventAudience
 }
 
 export const emptyEventForm: EventForm = {
@@ -61,6 +69,7 @@ export const emptyEventForm: EventForm = {
   longitude: '',
   hide_from_public_map: false,
   completed: false,
+  audience: '',
 }
 
 export type EventErrors = Partial<Record<keyof EventForm, string>>
@@ -167,9 +176,11 @@ export function flattenDetails(rows: EventWithDetails[]): EventDetails[] {
 
 export async function listEvents(): Promise<EventDetails[]> {
   if (!supabase) return []
+  // Keep standing meetings filled in 90 days ahead (idempotent; harmless if it fails).
+  await supabase.rpc('event_series_roll')
   const { data, error } = await supabase
     .from('events')
-    .select('id,title,event_type,starts_at,ends_at,status,event_details(location_name,location_detail,description,latitude,longitude,hide_from_public_map)')
+    .select('id,title,event_type,starts_at,ends_at,status,audience,series_id,series_date,series_edited,event_details(location_name,location_detail,description,latitude,longitude,hide_from_public_map)')
     .order('starts_at')
   if (error) throw new Error('events')
   return flattenDetails(data as unknown as EventWithDetails[])
@@ -177,7 +188,13 @@ export async function listEvents(): Promise<EventDetails[]> {
 
 export async function createEvent(form: EventForm): Promise<void> {
   if (!supabase) throw new Error('events')
-  const { error } = await supabase.rpc('save_event', toSaveArgs(null, form))
+  const { data, error } = await supabase.rpc('save_event', toSaveArgs(null, form))
+  if (error) throw new Error('events')
+  if (form.audience) await setAudience(data as string, form.audience)
+}
+
+async function setAudience(id: string, audience: EventAudience): Promise<void> {
+  const { error } = await supabase!.rpc('event_set_audience', { p_event: id, p_audience: audience || null })
   if (error) throw new Error('events')
 }
 
@@ -185,6 +202,7 @@ export async function updateEvent(id: string, form: EventForm): Promise<void> {
   if (!supabase) throw new Error('events')
   const { error } = await supabase.rpc('save_event', toSaveArgs(id, form))
   if (error) throw new Error('events')
+  await setAudience(id, form.audience)
 }
 
 export async function setEventStatus(id: string, status: EventStatus): Promise<void> {
