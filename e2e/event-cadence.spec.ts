@@ -90,7 +90,7 @@ test('Command builds a prep cadence, applies it (past steps are skipped and name
   await cp.reload()
   await article(cp, eventTitle).first().getByRole('button', { name: 'Cancel event' }).click()
   await article(cp, eventTitle).first().getByRole('button', { name: 'Confirm cancel' }).click()
-  await expect(article(cp, eventTitle).first().getByText('CANCELLED')).toBeVisible()
+  await expect(article(cp, eventTitle).first().getByText('CANCELLED', { exact: true })).toBeVisible()
   const after = await admin().from('events').select('status').eq('source_event_id', ev.id).single()
   expect(after.data?.status).toBe('cancelled')
 })
