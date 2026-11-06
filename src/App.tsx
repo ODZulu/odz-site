@@ -29,6 +29,7 @@ import Notifications from './pages/Notifications'
 import Minutes from './pages/Minutes'
 import MotionDetail from './pages/MotionDetail'
 import Motions from './pages/Motions'
+import Opportunities from './pages/Opportunities'
 import Treasury from './pages/Treasury'
 import MinutesDetail from './pages/MinutesDetail'
 import MinutesEdit from './pages/MinutesEdit'
@@ -96,6 +97,7 @@ export default function App() {
           <Route path="/roster/:callsign" element={<RosterDetail />} />
           <Route path="/designations" element={<Designations />} />
           <Route path="/motions" element={<Motions />} />
+          <Route path="/opportunities" element={<Opportunities />} />
           <Route path="/motions/:id" element={<MotionDetail />} />
           <Route path="/agenda/:eventId" element={<AgendaPage />} />
           <Route path="/treasury" element={<Treasury />} />
