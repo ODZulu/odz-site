@@ -36,17 +36,17 @@ export async function listRegistrationEventIds(): Promise<Set<string>> {
 const errorStyle = { color: 'var(--alert)' } as const
 
 /** Registration, waitlist and (for Command) settings and attendance, for one event. Members only (RLS). */
-export function RegistrationToggle({ event }: { event: EventLite }) {
+export function RegistrationToggle({ event, onChanged }: { event: EventLite; onChanged?: () => void }) {
   const [open, setOpen] = useState(false)
   return (
     <details onToggle={(e) => setOpen((e.currentTarget as HTMLDetailsElement).open)}>
       <summary>Registration</summary>
-      {open && <RegistrationPanel event={event} />}
+      {open && <RegistrationPanel event={event} onChanged={onChanged} />}
     </details>
   )
 }
 
-export function RegistrationPanel({ event }: { event: EventLite }) {
+export function RegistrationPanel({ event, onChanged }: { event: EventLite; onChanged?: () => void }) {
   const { can } = useAuth()
   const write = can('write_events')
   const info = useLoad(async () => {
@@ -73,6 +73,7 @@ export function RegistrationPanel({ event }: { event: EventLite }) {
       return false
     }
     await Promise.all([info.reload(), list.reload()])
+    onChanged?.() // the event itself may have changed (confirming attendance completes it)
     return true
   }
 

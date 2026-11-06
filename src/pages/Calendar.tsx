@@ -130,7 +130,7 @@ export default function Calendar() {
             <Link to={`/agenda/${e.id}`}>Agenda</Link>
           </p>
         )}
-        {detail && (registration.data?.has(e.id) ? <RegistrationToggle event={e} /> : <RsvpToggle event={e} />)}
+        {detail && (registration.data?.has(e.id) ? <RegistrationToggle event={e} onChanged={() => void events.reload()} /> : <RsvpToggle event={e} />)}
         {write && (
           <div className="odz-row" style={{ marginTop: '0.5rem' }}>
             <Button small variant="sec" onClick={() => { setErrors({}); setEditing({ id: e.id, form: formFrom(e) }) }}>
