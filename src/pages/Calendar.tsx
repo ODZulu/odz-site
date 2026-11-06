@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router'
 import { useAuth } from '../auth/AuthProvider'
 import { Button, Chip, ConfirmAction, Field, Panel, Select, Textarea } from '../components'
+import { listRegistrationEventIds, RegistrationToggle } from '../components/RegistrationPanel'
 import { RsvpToggle } from '../components/RsvpPanel'
 import {
   createEvent,
@@ -21,6 +22,8 @@ import {
   type PublicEvent,
 } from '../lib/events'
 import { Markdown } from '../lib/markdown'
+import { registrationMessage } from '../lib/registration'
+import { supabase } from '../lib/supabase'
 import { formatTimeL, toLocalInput, TZ_LABEL } from '../lib/time'
 import { useLoad } from '../lib/useLoad'
 
@@ -48,6 +51,8 @@ export default function Calendar() {
   const detail = can('read_event_details')
   const write = can('write_events')
   const events = useLoad<AnyEvent[]>(() => (detail ? listEvents() : listPublicEvents()), [detail])
+  // Events that use registration show it instead of RSVP and readiness (one "going" state per event, MVA-231).
+  const registration = useLoad(async () => (detail ? await listRegistrationEventIds() : new Set<string>()), [detail])
   const [editing, setEditing] = useState<{ id: string | null; form: EventForm } | null>(null)
   const [errors, setErrors] = useState<EventErrors>({})
   const [failure, setFailure] = useState<string | null>(null)
@@ -84,6 +89,15 @@ export default function Calendar() {
     }
   }
 
+  async function requireRegistration(id: string) {
+    setFailure(null)
+    const { error } = await supabase!.rpc('event_registration_configure', {
+      p_event: id, p_opens_at: null, p_closes_at: null, p_capacity: null, p_cutoff_at: null,
+    })
+    if (error) setFailure(registrationMessage(error.message))
+    await registration.reload()
+  }
+
   const set = (k: keyof EventForm) => (ev: { target: { value: string } }) =>
     setEditing((cur) => (cur ? { ...cur, form: { ...cur.form, [k]: ev.target.value } } : cur))
 
@@ -98,6 +112,7 @@ export default function Calendar() {
           </span>
           <Chip variant="plain">{e.event_type.toUpperCase()}</Chip>
           {cancelled && <Chip variant="alert">CANCELLED</Chip>}
+          {e.status === 'completed' && <Chip variant="plain">COMPLETED</Chip>}
         </div>
         <h3 className="odz-event__title">{e.title}</h3>
         {detail && e.location_name && <p className="odz-muted">{e.location_name}</p>}
@@ -115,13 +130,18 @@ export default function Calendar() {
             <Link to={`/agenda/${e.id}`}>Agenda</Link>
           </p>
         )}
-        {detail && <RsvpToggle event={e} />}
+        {detail && (registration.data?.has(e.id) ? <RegistrationToggle event={e} onChanged={() => void events.reload()} /> : <RsvpToggle event={e} />)}
         {write && (
           <div className="odz-row" style={{ marginTop: '0.5rem' }}>
             <Button small variant="sec" onClick={() => { setErrors({}); setEditing({ id: e.id, form: formFrom(e) }) }}>
               Edit
             </Button>
-            {cancelled ? (
+            {e.status === 'scheduled' && !registration.data?.has(e.id) && (
+              <Button small variant="sec" onClick={() => void requireRegistration(e.id)}>
+                Require registration
+              </Button>
+            )}
+            {e.status === 'completed' ? null : cancelled ? (
               <Button small variant="sec" onClick={() => void status(e.id, 'scheduled')}>
                 Reinstate
               </Button>
