@@ -44,11 +44,11 @@ test('tap the map to drop a pin, tap elsewhere to move it, drag it, remove it', 
   await expect(map).toBeVisible()
   await expect(map.locator('canvas')).toBeVisible()
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
-  await expect(page.getByLabel('Event pin')).toHaveCount(0)
+  await expect(page.getByLabel('Event pin', { exact: true })).toHaveCount(0)
 
   // Tap the middle: the pin lands on the map's starting centre (Phoenix) and fills both fields.
   await map.click()
-  await expect(page.getByLabel('Event pin')).toBeVisible()
+  await expect(page.getByLabel('Event pin', { exact: true })).toBeVisible()
   const lat1 = await num(page, 'Latitude')
   const lng1 = await num(page, 'Longitude')
   expect(Math.abs(lat1 - 33.4484)).toBeLessThan(0.1)
@@ -61,7 +61,7 @@ test('tap the map to drop a pin, tap elsewhere to move it, drag it, remove it', 
   expect(lat2).toBeGreaterThan(lat1) // up on screen is north
 
   // Drag the pin down.
-  const pin = page.getByLabel('Event pin')
+  const pin = page.getByLabel('Event pin', { exact: true })
   const box = (await pin.boundingBox())!
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
   await page.mouse.down()
@@ -72,11 +72,11 @@ test('tap the map to drop a pin, tap elsewhere to move it, drag it, remove it', 
   // Typing coordinates moves the pin too; Remove pin clears everything.
   await page.getByLabel('Latitude').fill('34.5')
   await page.getByLabel('Longitude').fill('-111.5')
-  await expect(page.getByLabel('Event pin')).toHaveCount(1)
+  await expect(page.getByLabel('Event pin', { exact: true })).toHaveCount(1)
   await page.getByRole('button', { name: 'Remove pin' }).click()
   await expect(page.getByLabel('Latitude')).toHaveValue('')
   await expect(page.getByLabel('Longitude')).toHaveValue('')
-  await expect(page.getByLabel('Event pin')).toHaveCount(0)
+  await expect(page.getByLabel('Event pin', { exact: true })).toHaveCount(0)
 })
 
 test('a saved pin shows a small map preview on the event card, loaded only when opened', async ({ browser }) => {
@@ -98,5 +98,5 @@ test('a saved pin shows a small map preview on the event card, loaded only when 
   await card.getByText('Map', { exact: true }).click()
   const preview = card.getByRole('img', { name: 'Map showing the event location' })
   await expect(preview.locator('canvas')).toBeVisible()
-  await expect(card.getByLabel('Event pin')).toBeVisible()
+  await expect(card.getByLabel('Event pin', { exact: true })).toBeVisible()
 })
