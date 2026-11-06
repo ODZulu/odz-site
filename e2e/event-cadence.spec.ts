@@ -62,7 +62,7 @@ test('Command builds a prep cadence, applies it (past steps are skipped and name
   expect(made.data?.[0].title).toBe(`${eventTitle}: Briefing`)
   expect(made.data?.[0].audience).toBe('command')
   await expect(article(cp, eventTitle).first().getByText('Prep timeline (1)')).toBeVisible()
-  await expect(article(cp, `${eventTitle}: Briefing`).getByText('PREP')).toBeVisible()
+  await expect(article(cp, `${eventTitle}: Briefing`).getByText('PREP', { exact: true })).toBeVisible()
 
   // The prep meeting is Command-only: invisible to a Member and to the public.
   const m = await asUser(mem.email, mem.password)
