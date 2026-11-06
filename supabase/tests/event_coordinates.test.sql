@@ -124,7 +124,7 @@ begin
   perform pg_temp.act(v_cmd);
   fut := public.save_event(null, 'Fake Cancelled', 'Op', now() + interval '5 days', null, null, null, null, null, null, false, null);
   update public.events set status = 'cancelled' where id = fut;
-  perform public.save_event(fut, 'Fake Cancelled', 'Op', now() + interval '5 days', null, null, null, null, null, null, false, 'completed');
+  perform public.save_event(fut, 'Fake Cancelled', 'Op', now() + interval '5 days', null, null, null, null, null, null, false, 'scheduled');
   reset role;
   select status into s from public.events where id = fut;
   if s <> 'cancelled' then raise exception 'FAIL: cancelled stays cancelled (got %)', s; end if;
