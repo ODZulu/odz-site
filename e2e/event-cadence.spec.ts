@@ -21,7 +21,9 @@ async function signInPage(browser: Browser, u: { email: string; password: string
   return page
 }
 
-const article = (page: Page, title: string) => page.locator('article.odz-event').filter({ hasText: title })
+// Match the card by its exact heading: a prep meeting's title contains its event's title.
+const article = (page: Page, title: string) =>
+  page.locator('article.odz-event').filter({ has: page.getByRole('heading', { name: title, exact: true }) })
 const localStamp = (days: number) => `${new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10)}T10:00`
 
 test('Command builds a prep cadence, applies it (past steps are skipped and named), moves the event, then cancels it', async ({ browser }) => {
