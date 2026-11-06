@@ -21,6 +21,7 @@ import {
   type EventType,
   type PublicEvent,
 } from '../lib/events'
+import { EventMapToggle } from '../components/EventMapToggle'
 import { PinFields } from '../components/PinFields'
 import { geoLink, osmLink } from '../lib/geo'
 import { Markdown } from '../lib/markdown'
@@ -138,6 +139,7 @@ export default function Calendar() {
             <a href={osmLink(e.latitude, e.longitude)} target="_blank" rel="noopener noreferrer">View on OpenStreetMap</a>
           </p>
         )}
+        {detail && e.latitude != null && e.longitude != null && <EventMapToggle lat={e.latitude} lng={e.longitude} />}
         {detail && e.event_type === 'Meeting' && (
           <p style={{ margin: '0.5rem 0' }}>
             <Link to={`/agenda/${e.id}`}>Agenda</Link>

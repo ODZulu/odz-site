@@ -1,15 +1,18 @@
-import { useState } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import { parseCoordinates, roundCoord } from '../lib/geo'
 import { Button } from './Button'
 import { Field } from './Field'
 
+// The map is its own chunk: it loads only when an event form is opened.
+const PinMap = lazy(() => import('./PinMap'))
+
 type Patch = { latitude?: string; longitude?: string; hide_from_public_map?: boolean }
 
 /**
- * The event location pin (MVA-224). This is the seam for the map picker: today the pin is typed,
- * or taken from the phone's location, and removed with one button. When Dax approves a map
- * provider, the tap-to-drop map goes above these fields and writes the same two values, so the
- * form, validation and database do not change.
+ * The event location pin (MVA-224): a map to tap or click, a draggable pin, and the two coordinate
+ * fields underneath (typed, or from the phone's location), all writing the same two values. The
+ * fields stay the source of truth, so the form, validation and database are the same with or
+ * without the map (and the fields still work if the map cannot start).
  */
 export function PinFields({
   latitude, longitude, hidden, error, onChange,
@@ -41,6 +44,13 @@ export function PinFields({
     <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
       <legend className="odz-label">Map pin (optional, members only)</legend>
       <div className="odz-stack">
+        <Suspense fallback={<p className="odz-muted" role="status">Loading map</p>}>
+          <PinMap
+            value={pin.ok ? pin.value : null}
+            editable
+            onPick={(la, lo) => onChange({ latitude: roundCoord(la), longitude: roundCoord(lo) })}
+          />
+        </Suspense>
         <Field label="Latitude" inputMode="decimal" value={latitude} onChange={(e) => onChange({ latitude: e.target.value })} error={error} />
         <Field label="Longitude" inputMode="decimal" value={longitude} onChange={(e) => onChange({ longitude: e.target.value })} />
         <div className="odz-row" style={{ gap: '0.5rem', flexWrap: 'wrap' }}>
