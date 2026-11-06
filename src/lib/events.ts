@@ -26,6 +26,9 @@ export type PublicEvent = {
   series_id?: string | null
   series_date?: string | null
   series_edited?: boolean
+  /** The event a prep meeting counts down to (MVA-229), and the "event date changed" flag. */
+  source_event_id?: string | null
+  cadence_review?: boolean
 }
 
 /** Members with read_event_details also get the `event_details` row (location, directions, description). */
@@ -180,7 +183,7 @@ export async function listEvents(): Promise<EventDetails[]> {
   await supabase.rpc('event_series_roll')
   const { data, error } = await supabase
     .from('events')
-    .select('id,title,event_type,starts_at,ends_at,status,audience,series_id,series_date,series_edited,event_details(location_name,location_detail,description,latitude,longitude,hide_from_public_map)')
+    .select('id,title,event_type,starts_at,ends_at,status,audience,series_id,series_date,series_edited,source_event_id,cadence_review,event_details(location_name,location_detail,description,latitude,longitude,hide_from_public_map)')
     .order('starts_at')
   if (error) throw new Error('events')
   return flattenDetails(data as unknown as EventWithDetails[])

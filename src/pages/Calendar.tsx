@@ -23,13 +23,15 @@ import {
   type PublicEvent,
 } from '../lib/events'
 import { PinFields } from '../components/PinFields'
+import { ApplyCadence, CadencePanel } from '../components/CadencePanel'
 import { SeriesPanel } from '../components/SeriesPanel'
+import { prepTimeline } from '../lib/cadence'
 import { geoLink, osmLink } from '../lib/geo'
 import { AUDIENCE_LABEL } from '../lib/recurrence'
 import { Markdown } from '../lib/markdown'
 import { registrationMessage } from '../lib/registration'
 import { supabase } from '../lib/supabase'
-import { formatTimeL, toLocalInput, TZ_LABEL } from '../lib/time'
+import { formatDateLine, formatTimeL, toLocalInput, TZ_LABEL } from '../lib/time'
 import { useLoad } from '../lib/useLoad'
 
 type AnyEvent = PublicEvent & Partial<EventDetails>
@@ -99,6 +101,13 @@ export default function Calendar() {
     }
   }
 
+  async function markReviewed(id: string) {
+    setFailure(null)
+    const { error } = await supabase!.rpc('event_cadence_review_done', { p_event: id })
+    if (error) setFailure('Could not clear the review flag.')
+    await events.reload()
+  }
+
   async function requireRegistration(id: string) {
     setFailure(null)
     const { error } = await supabase!.rpc('event_registration_configure', {
@@ -123,6 +132,8 @@ export default function Calendar() {
           <Chip variant="plain">{e.event_type.toUpperCase()}</Chip>
           {cancelled && <Chip variant="alert">CANCELLED</Chip>}
           {e.status === 'completed' && <Chip variant="plain">COMPLETED</Chip>}
+          {e.source_event_id && <Chip variant="plain">PREP</Chip>}
+          {e.cadence_review && <Chip variant="alert">REVIEW: EVENT DATE CHANGED</Chip>}
           {e.audience && <Chip variant="plain">{AUDIENCE_LABEL[e.audience].toUpperCase()}</Chip>}
         </div>
         <h3 className="odz-event__title">{e.title}</h3>
@@ -143,6 +154,20 @@ export default function Calendar() {
             <a href={osmLink(e.latitude, e.longitude)} target="_blank" rel="noopener noreferrer">View on OpenStreetMap</a>
           </p>
         )}
+        {detail && prepTimeline(events.data ?? [], e.id).length > 0 && (
+          <details>
+            <summary>{`Prep timeline (${prepTimeline(events.data ?? [], e.id).length})`}</summary>
+            <ul style={{ margin: '0.5rem 0', paddingLeft: '1.25rem' }}>
+              {prepTimeline(events.data ?? [], e.id).map((m) => (
+                <li key={m.id}>
+                  {formatDateLine(m.starts_at)} {formatTimeL(m.starts_at)}: {m.title}
+                  {m.status === 'cancelled' ? ' (cancelled)' : new Date(m.starts_at) < new Date() ? ' (done)' : ''}
+                  {m.description ? ` - ${m.description.split(/\r?\n/)[0]}` : ''}
+                </li>
+              ))}
+            </ul>
+          </details>
+        )}
         {detail && e.event_type === 'Meeting' && (
           <p style={{ margin: '0.5rem 0' }}>
             <Link to={`/agenda/${e.id}`}>Agenda</Link>
@@ -157,6 +182,12 @@ export default function Calendar() {
             <Button small variant="sec" onClick={() => { setErrors({}); setEditing({ id: null, form: { ...formFrom(e), starts: '', ends: '', completed: false } }); window.scrollTo(0, 0) }}>
               Duplicate
             </Button>
+            {e.status === 'scheduled' && !e.source_event_id && <ApplyCadence eventId={e.id} onDone={() => void events.reload()} />}
+            {e.cadence_review && (
+              <Button small variant="sec" onClick={() => void markReviewed(e.id)}>
+                Mark reviewed
+              </Button>
+            )}
             {e.status === 'scheduled' && !registration.data?.has(e.id) && (
               <Button small variant="sec" onClick={() => void requireRegistration(e.id)}>
                 Require registration
@@ -261,6 +292,8 @@ export default function Calendar() {
       {write && (
         <div style={{ marginBottom: '1.25rem' }}>
           <SeriesPanel onChanged={() => void events.reload()} />
+          <div style={{ height: '1.25rem' }} />
+          <CadencePanel onChanged={() => void events.reload()} />
         </div>
       )}
 
