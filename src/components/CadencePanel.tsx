@@ -199,15 +199,7 @@ function TemplateEditor({ existing, onDone, onCancel }: { existing: CadenceTempl
 
 /** On an event card: pick a template, see exactly what would happen, then apply (or re-apply). */
 export function ApplyCadence({ eventId, onDone }: { eventId: string; onDone: () => void }) {
-  const templates = useLoad(loadTemplates)
   const [open, setOpen] = useState(false)
-  const [templateId, setTemplateId] = useState('')
-  const [plan, setPlan] = useState<PlanRow[] | null>(null)
-  const [result, setResult] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [busy, setBusy] = useState(false)
-  const active = (templates.data ?? []).filter((t) => t.status === 'active')
-
   if (!open) {
     return (
       <Button small variant="sec" onClick={() => setOpen(true)}>
@@ -215,6 +207,18 @@ export function ApplyCadence({ eventId, onDone }: { eventId: string; onDone: () 
       </Button>
     )
   }
+  return <ApplyCadenceOpen eventId={eventId} onDone={onDone} onClose={() => setOpen(false)} />
+}
+
+// Templates are read only once the picker is opened, so a calendar full of events does not fetch them per card.
+function ApplyCadenceOpen({ eventId, onDone, onClose }: { eventId: string; onDone: () => void; onClose: () => void }) {
+  const templates = useLoad(loadTemplates)
+  const [templateId, setTemplateId] = useState('')
+  const [plan, setPlan] = useState<PlanRow[] | null>(null)
+  const [result, setResult] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const active = (templates.data ?? []).filter((t) => t.status === 'active')
 
   async function preview(id: string) {
     setTemplateId(id)
@@ -268,7 +272,7 @@ export function ApplyCadence({ eventId, onDone }: { eventId: string; onDone: () 
         <Button small variant="primary" disabled={busy || !actionable} onClick={() => void apply()}>
           Apply
         </Button>
-        <Button small variant="ghost" onClick={() => { setOpen(false); setPlan(null); setResult(null); setTemplateId('') }}>
+        <Button small variant="ghost" onClick={onClose}>
           Close
         </Button>
       </div>
