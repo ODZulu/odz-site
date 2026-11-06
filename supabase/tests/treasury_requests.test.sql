@@ -87,6 +87,25 @@ begin
   select count(*) into n from public.settings_audit where event = 'treasury_threshold_changed' and detail = '0 -> 5000 cents';
   if n <> 1 then raise exception 'FAIL: threshold change is logged'; end if;
 
+  ------------------------------------------------------------------ member access switch (MVA-255): Admin-only read and write
+  perform pg_temp.act(m1);
+  if public.treasury_member_access() is not null then raise exception 'FAIL: Member read the access switch'; end if;
+  if pg_temp.try('select public.set_treasury_member_access(false)') <> 'not allowed' then raise exception 'FAIL: Member set the access switch'; end if;
+  reset role;
+  perform pg_temp.act(c1);
+  if public.treasury_member_access() is not null then raise exception 'FAIL: Command read the access switch'; end if;
+  if pg_temp.try('select public.set_treasury_member_access(false)') <> 'not allowed' then raise exception 'FAIL: Command set the access switch'; end if;
+  reset role;
+  if has_table_privilege('authenticated', 'public.treasury_settings', 'select') then raise exception 'FAIL: settings table readable'; end if;
+  perform pg_temp.act(v_adm);
+  if public.treasury_member_access() is distinct from true then raise exception 'FAIL: Admin read of the access switch'; end if;
+  perform public.set_treasury_member_access(false);
+  if public.treasury_member_access() is distinct from false then raise exception 'FAIL: Admin turned access off'; end if;
+  perform public.set_treasury_member_access(true);
+  reset role;
+  select count(*) into n from public.settings_audit where event = 'treasury_member_access_changed' and detail in ('true -> false', 'false -> true');
+  if n <> 2 then raise exception 'FAIL: access changes are logged (got %)', n; end if;
+
   ------------------------------------------------------------------ donation: immediate, limited to available
   perform pg_temp.act(m1);
   if public.treasury_my_available() <> 10000 then raise exception 'FAIL: m1 available'; end if;

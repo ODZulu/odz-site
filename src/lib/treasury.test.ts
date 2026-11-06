@@ -121,3 +121,9 @@ describe('messages', () => {
     expect(treasuryMessage(undefined)).toBe('That did not work. Try again.')
   })
 })
+
+describe('access switch errors', () => {
+  it('maps the not-allowed error to plain words', () => {
+    expect(treasuryMessage('not allowed')).toBe('You are not allowed to do that.')
+  })
+})

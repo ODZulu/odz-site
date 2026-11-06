@@ -48,7 +48,7 @@ export default function Join() {
     const { data, error } = await supabase.auth.signUp({
       email: email.trim(),
       password,
-      options: { data: { invite_code: normalizeInviteCode(code) } },
+      options: { data: { invite_code: normalizeInviteCode(code) }, emailRedirectTo: `${window.location.origin}/login` },
     })
     setBusy(false)
     if (error) return setErrors({ form: 'Could not create the account. Check your details and try again.' })
@@ -124,7 +124,7 @@ export default function Join() {
       {step === 'created' && (
         <Panel title="Account created">
           <p>
-            Your account was created. <Link to="/login">Sign in</Link> to continue.
+            Your account was created. Open the confirmation link we emailed you, then <Link to="/login">sign in</Link> to continue.
           </p>
         </Panel>
       )}

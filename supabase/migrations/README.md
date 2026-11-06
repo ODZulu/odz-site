@@ -160,3 +160,5 @@ All three migrations are applied to the ODZ dev project (2026-10-10 and 2026-10-
 * `treasury_requests` and the append-only `treasury_request_log` (who, when, from/to status, note; update, delete and truncate blocked). Requests are never deleted and their amount and approval rule never change. Visible to the requester and the MVA-216 `full` audience; nobody else; anon none. Profile columns carry no foreign key.
 * Still **dark ship**: every function starts from `treasury_access()`, which is `none` for everyone but an Admin until Dax flips `member_access`.
 
+
+`20261105120000_treasury_member_access_read.sql` (MVA-255): adds `treasury_member_access()`, a read-only Admin-only function (null for everyone else) so the Treasury page can show the member-access switch. Additive; `treasury_settings` stays ungranted and the writer `set_treasury_member_access()` is unchanged.

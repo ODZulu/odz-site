@@ -28,12 +28,14 @@ describe('no public signup UI', () => {
     }
   })
 
-  it('the login page has no signup or forgot-password link', () => {
+  it('the login page has no signup link but does offer password reset', () => {
     // Not configured in tests, so it renders the notice; the page text itself is what matters.
     const html = render(<Login />).toLowerCase()
-    for (const word of ['join', 'sign up', 'signup', 'register', 'request access', 'forgot', 'invite']) {
+    for (const word of ['join', 'sign up', 'signup', 'register', 'request access', 'invite']) {
       expect(html).not.toContain(word)
     }
+    expect(html).toContain('forgot password?')
+    expect(html).toContain('/forgot-password')
   })
 
   it('nothing in the source links to /join except its own route', () => {

@@ -266,6 +266,11 @@ function Threshold({ threshold, onDone }: { threshold: number; onDone: () => voi
         <p>
           Refund requests at or below <strong aria-label="Approval limit">{formatCents(threshold)}</strong> are handled by the Treasurer alone. Above it, Command approves first.
         </p>
+        {threshold === 0 && (
+          <p role="note" className="odz-muted">
+            The limit is $0.00, so every refund needs Command approval.
+          </p>
+        )}
         <Field label="New limit (dollars)" inputMode="decimal" value={text} onChange={(e) => setText(e.target.value)} />
         <Button variant="sec" disabled={!text.trim()} onClick={() => void save()}>
           Set limit

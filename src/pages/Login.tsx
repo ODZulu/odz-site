@@ -1,14 +1,16 @@
 import { useState, type FormEvent } from 'react'
+import { Link, useLocation } from 'react-router'
 import { PublicOnly } from '../auth/Gate'
 import { useAuth } from '../auth/AuthProvider'
 import { Button, Field, Panel } from '../components'
 
 /**
- * Email and password only. No "forgot password" and no sign-up link: signup is invite-only and
- * not advertised, and password resets are manual (no email yet, MVA-200).
+ * Email and password, plus a forgot-password link (MVA-200). No sign-up link: signup is invite-only
+ * and not advertised.
  */
 export default function Login() {
   const { configured, signIn } = useAuth()
+  const notice = (useLocation().state as { notice?: string } | null)?.notice
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -31,6 +33,11 @@ export default function Login() {
         Sign in
       </h1>
       <Panel title="Access">
+        {notice && (
+          <p role="status" style={{ marginBottom: '1rem' }}>
+            {notice}
+          </p>
+        )}
         {configured ? (
           <form onSubmit={onSubmit} noValidate style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <Field
@@ -56,6 +63,9 @@ export default function Login() {
         ) : (
           <p className="odz-muted">Sign-in is not configured for this build.</p>
         )}
+        <p style={{ marginTop: '1rem' }}>
+          <Link to="/forgot-password">Forgot password?</Link>
+        </p>
         <p className="odz-muted" style={{ marginTop: '1rem' }}>
           Locked out? Contact Command.
         </p>

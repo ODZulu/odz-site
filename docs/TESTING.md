@@ -49,7 +49,7 @@ There is no service-role fallback against the hosted dev project: the service-ro
 
 ### Suites
 
-* `e2e/public.spec.ts` (no backend): anonymous visitors are sent to login from every app route; no public page links to `/join` or says how people join; login has no forgot-password link; the PWA manifest is served; no horizontal scroll at phone width.
+* `e2e/public.spec.ts` (no backend): anonymous visitors are sent to login from every app route; no public page links to `/join` or says how people join; login offers password reset (MVA-200); the PWA manifest is served; no horizontal scroll at phone width.
 * `e2e/invite-flow.spec.ts` (backend): valid invite to signup to setup to pending; unknown, used, expired and revoked codes show the identical error; pending and setup-incomplete accounts are redirected from app routes; approved members reach HQ; a wrong password gives the generic message.
 * `e2e/api.spec.ts` (backend): anon cannot read `invites`, `member_private` and friends; `check_invite` is boolean only; a member reads only their own private row and cannot escalate; only approvers create invites and the code is server-generated.
 

@@ -26,10 +26,10 @@ test.describe('anonymous visitor', () => {
     }
   })
 
-  test('login has no forgot-password link and says who to ask', async ({ page }) => {
+  test('login offers password reset and still says who to ask', async ({ page }) => {
     await page.goto('/login')
     const text = (await page.locator('body').innerText()).toLowerCase()
-    expect(text).not.toContain('forgot')
+    expect(text).toContain('forgot password?')
     expect(text).toContain('locked out? contact command')
   })
 

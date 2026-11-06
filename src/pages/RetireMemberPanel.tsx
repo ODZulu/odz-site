@@ -3,6 +3,8 @@ import { Button, Chip, ConfirmAction, Panel, Select, Textarea } from '../compone
 import { counter } from '../lib/roster'
 import {
   isSeatFull,
+  isTierMissing,
+  PICK_TIER_MESSAGE,
   retireBlock,
   retireMessage,
   retireWarning,
@@ -106,8 +108,12 @@ type UnretireProps = {
 export function UnretireMemberPanel({ callsign, profileId, currentTierId, tierName, tiers, counts, canEdit, onChange }: UnretireProps) {
   const [error, setError] = useState<string | null>(null)
   const [full, setFull] = useState(false)
+  // No tier on record (or the database found none): the database cannot guess, so Command picks one.
+  const [needsTier, setNeedsTier] = useState(currentTierId === null)
   const [pick, setPick] = useState('')
   const options = returnTierOptions({ tiers, counts, currentTierId })
+
+  const picking = full || needsTier
 
   if (!canEdit) return null
 
@@ -117,25 +123,31 @@ export function UnretireMemberPanel({ callsign, profileId, currentTierId, tierNa
     const { error: err } = await supabase.rpc('unretire_member', { p_profile: profileId, p_tier: tier })
     if (err) {
       setFull(isSeatFull(err))
+      if (isTierMissing(err)) setNeedsTier(true)
       setError(retireMessage(err))
       return
     }
     setFull(false)
+    setNeedsTier(false)
     onChange()
   }
 
   return (
     <Panel title="Return to the roster" action={<Chip variant="plain">COMMAND</Chip>}>
       <div className="odz-stack">
-        <p>{`${callsign} is retired. Returning puts them back as ${tierName ?? 'their prior tier'}. Designations and office seats are not restored; Command reassigns them.`}</p>
+        <p>{`${callsign} is retired. ${currentTierId === null ? 'Returning needs a tier.' : `Returning puts them back as ${tierName ?? 'their prior tier'}.`} Designations and office seats are not restored; Command reassigns them.`}</p>
         {error && (
           <p role="alert" style={{ color: 'var(--alert)' }}>
             {error}
           </p>
         )}
-        {full && (
+        {picking && (
           <div className="odz-stack">
-            <p className="odz-muted">That seat is full. Pick a tier with room, or leave them retired until a seat opens.</p>
+            <p className="odz-muted">
+              {full
+                ? 'That seat is full. Pick a tier with room, or leave them retired until a seat opens.'
+                : `${callsign} has no tier on record. ${PICK_TIER_MESSAGE}.`}
+            </p>
             <Select
               label="Return as"
               value={pick}
@@ -149,7 +161,7 @@ export function UnretireMemberPanel({ callsign, profileId, currentTierId, tierNa
             </div>
           </div>
         )}
-        {!full && (
+        {!picking && (
           <div>
             <ConfirmAction
               label="Return to roster"

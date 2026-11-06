@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   isSeatFull,
+  isTierMissing,
   retireBlock,
   retireMessage,
   retireWarning,
@@ -104,5 +105,13 @@ describe('retireMessage / isSeatFull', () => {
     expect(isSeatFull({ message: 'Command is full: 3/3' })).toBe(true)
     expect(isSeatFull({ message: 'not allowed' })).toBe(false)
     expect(isSeatFull(null)).toBe(false)
+  })
+})
+
+describe('missing tier on unretire (MVA-251)', () => {
+  it('asks for a tier instead of saying the tier is not available', () => {
+    expect(retireMessage({ message: 'invalid_tier' })).toBe('Pick a tier to restore this member to')
+    expect(isTierMissing({ message: 'invalid_tier' })).toBe(true)
+    expect(isTierMissing({ message: 'not_retired' })).toBe(false)
   })
 })
