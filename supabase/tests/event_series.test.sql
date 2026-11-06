@@ -255,8 +255,10 @@ begin
   reset role;
 
   -- Its agenda is invisible below it; a public meeting's published agenda still shows.
-  insert into public.agendas (event_id, status, publish_count, published_at) values (ev_cmd, 'published', 1, now()) returning id into ag;
-  insert into public.agendas (event_id, status, publish_count, published_at) values (ev_pub, 'published', 1, now());
+  -- (a new agenda is always a draft; publish it with an update, as publish_agenda() does)
+  insert into public.agendas (event_id) values (ev_cmd) returning id into ag;
+  insert into public.agendas (event_id) values (ev_pub);
+  update public.agendas set status = 'published', publish_count = 1, published_at = now() where event_id in (ev_cmd, ev_pub);
   perform pg_temp.act(v_mem);
   select count(*) into n from public.agendas where event_id in (ev_cmd, ev_pub);
   if n <> 1 then raise exception 'FAIL: a Member sees only the public meeting''s agenda (got %)', n; end if;
