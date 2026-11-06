@@ -1,3 +1,4 @@
+import { parseCoordinates } from './geo'
 import { dayKey, formatDateLine, fromLocalInput } from './time'
 import { supabase } from './supabase'
 
@@ -25,6 +26,10 @@ export type EventDetails = PublicEvent & {
   location_name: string | null
   location_detail: string | null
   description: string | null
+  /** Coordinates live only in event_details (MVA-224): members with read_event_details only. */
+  latitude: number | null
+  longitude: number | null
+  hide_from_public_map: boolean
 }
 
 export type EventForm = {
@@ -36,6 +41,12 @@ export type EventForm = {
   location_name: string
   location_detail: string
   description: string
+  /** Decimal degrees as typed; both or neither. */
+  latitude: string
+  longitude: string
+  hide_from_public_map: boolean
+  /** Backfill: a past event recorded as completed. */
+  completed: boolean
 }
 
 export const emptyEventForm: EventForm = {
@@ -46,6 +57,10 @@ export const emptyEventForm: EventForm = {
   location_name: '',
   location_detail: '',
   description: '',
+  latitude: '',
+  longitude: '',
+  hide_from_public_map: false,
+  completed: false,
 }
 
 export type EventErrors = Partial<Record<keyof EventForm, string>>
@@ -64,7 +79,20 @@ export function validateEventForm(f: EventForm): EventErrors {
   if (f.location_name.length > 120) e.location_name = 'Too long.'
   if (f.location_detail.length > 1000) e.location_detail = 'Too long (1000 characters).'
   if (f.description.length > 5000) e.description = 'Too long (5000 characters).'
+  const pin = parseCoordinates(f.latitude, f.longitude)
+  if (!pin.ok) e.latitude = pin.error
+  if (f.completed && start && new Date(start) > new Date()) e.completed = 'A completed event must have started already.'
   return e
+}
+
+function pinArgs(f: EventForm) {
+  const pin = parseCoordinates(f.latitude, f.longitude)
+  return {
+    p_latitude: pin.ok && pin.value ? pin.value.lat : null,
+    p_longitude: pin.ok && pin.value ? pin.value.lng : null,
+    p_hide_from_public_map: f.hide_from_public_map,
+    p_status: f.completed ? 'completed' : null,
+  }
 }
 
 /** The arguments of the save_event() RPC: the event and its details, saved together. */
@@ -78,6 +106,7 @@ export function toSaveArgs(id: string | null, f: EventForm) {
     p_location_name: f.location_name.trim() || null,
     p_location_detail: f.location_detail.trim() || null,
     p_description: f.description.trim() || null,
+    ...pinArgs(f),
   }
 }
 
@@ -120,7 +149,7 @@ export async function listPublicEvents(): Promise<PublicEvent[]> {
 }
 
 type EventWithDetails = PublicEvent & {
-  event_details: { location_name: string | null; location_detail: string | null; description: string | null } | null
+  event_details: { location_name: string | null; location_detail: string | null; description: string | null; latitude: number | null; longitude: number | null; hide_from_public_map: boolean } | null
 }
 
 /** Joins each event to its details row; a caller without read_event_details gets null details. */
@@ -130,6 +159,9 @@ export function flattenDetails(rows: EventWithDetails[]): EventDetails[] {
     location_name: d?.location_name ?? null,
     location_detail: d?.location_detail ?? null,
     description: d?.description ?? null,
+    latitude: d?.latitude ?? null,
+    longitude: d?.longitude ?? null,
+    hide_from_public_map: d?.hide_from_public_map ?? false,
   }))
 }
 
@@ -137,7 +169,7 @@ export async function listEvents(): Promise<EventDetails[]> {
   if (!supabase) return []
   const { data, error } = await supabase
     .from('events')
-    .select('id,title,event_type,starts_at,ends_at,status,event_details(location_name,location_detail,description)')
+    .select('id,title,event_type,starts_at,ends_at,status,event_details(location_name,location_detail,description,latitude,longitude,hide_from_public_map)')
     .order('starts_at')
   if (error) throw new Error('events')
   return flattenDetails(data as unknown as EventWithDetails[])

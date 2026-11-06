@@ -28,6 +28,25 @@ describe('validateEventForm', () => {
   })
 })
 
+describe('coordinates and backfill', () => {
+  it('accepts a pin and carries it to the RPC', () => {
+    const f = { ...good, latitude: '33.4484', longitude: '-112.074' }
+    expect(validateEventForm(f)).toEqual({})
+    expect(toSaveArgs(null, f)).toMatchObject({ p_latitude: 33.4484, p_longitude: -112.074, p_status: null })
+  })
+  it('sends nulls when there is no pin', () => expect(toSaveArgs(null, good)).toMatchObject({ p_latitude: null, p_longitude: null, p_hide_from_public_map: false }))
+  it('rejects half a pin or an out-of-range one', () => {
+    expect(validateEventForm({ ...good, latitude: '33.4' }).latitude).toBeDefined()
+    expect(validateEventForm({ ...good, latitude: '95', longitude: '1' }).latitude).toBeDefined()
+  })
+  it('lets a past event be recorded as completed, but not a future one', () => {
+    const past = { ...good, starts: '2015-06-01T09:00', ends: '', completed: true }
+    expect(validateEventForm(past)).toEqual({})
+    expect(toSaveArgs(null, past).p_status).toBe('completed')
+    expect(validateEventForm({ ...good, starts: '2099-06-01T09:00', ends: '', completed: true }).completed).toBeDefined()
+  })
+})
+
 describe('toSaveArgs', () => {
   it('converts Phoenix wall-clock input to UTC and trims', () => {
     const a = toSaveArgs(null, { ...good, title: '  Fake Training ', location_name: ' ' })
@@ -43,7 +62,7 @@ describe('toSaveArgs', () => {
 describe('flattenDetails', () => {
   const base = { id: '1', title: 'Fake', event_type: 'Other' as const, starts_at: '2026-10-17T13:30:00.000Z', ends_at: null, status: 'scheduled' as const }
   it('lifts the details row onto the event', () => {
-    const [e] = flattenDetails([{ ...base, event_details: { location_name: 'Fake Field', location_detail: null, description: 'x' } }])
+    const [e] = flattenDetails([{ ...base, event_details: { location_name: 'Fake Field', location_detail: null, description: 'x', latitude: null, longitude: null, hide_from_public_map: false } }])
     expect(e.location_name).toBe('Fake Field')
     expect(e.description).toBe('x')
     expect('event_details' in e).toBe(false)

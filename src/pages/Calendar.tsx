@@ -21,6 +21,8 @@ import {
   type EventType,
   type PublicEvent,
 } from '../lib/events'
+import { PinFields } from '../components/PinFields'
+import { geoLink, osmLink } from '../lib/geo'
 import { Markdown } from '../lib/markdown'
 import { registrationMessage } from '../lib/registration'
 import { supabase } from '../lib/supabase'
@@ -38,6 +40,10 @@ function formFrom(e: AnyEvent): EventForm {
     location_name: e.location_name ?? '',
     location_detail: e.location_detail ?? '',
     description: e.description ?? '',
+    latitude: e.latitude == null ? '' : String(e.latitude),
+    longitude: e.longitude == null ? '' : String(e.longitude),
+    hide_from_public_map: e.hide_from_public_map ?? false,
+    completed: false,
   }
 }
 
@@ -125,12 +131,19 @@ export default function Calendar() {
             {e.description && <Markdown source={e.description} />}
           </details>
         )}
+        {detail && e.latitude != null && e.longitude != null && (
+          <p className="odz-muted">
+            Pin {e.latitude}, {e.longitude}{' '}
+            <a href={geoLink(e.latitude, e.longitude)}>Open in maps app</a>{' · '}
+            <a href={osmLink(e.latitude, e.longitude)} target="_blank" rel="noopener noreferrer">View on OpenStreetMap</a>
+          </p>
+        )}
         {detail && e.event_type === 'Meeting' && (
           <p style={{ margin: '0.5rem 0' }}>
             <Link to={`/agenda/${e.id}`}>Agenda</Link>
           </p>
         )}
-        {detail && (registration.data?.has(e.id) ? <RegistrationToggle event={e} onChanged={() => void events.reload()} /> : <RsvpToggle event={e} />)}
+        {detail && (registration.data?.has(e.id) ? <RegistrationToggle event={e} onChanged={() => void events.reload()} /> : e.status === 'completed' ? null : <RsvpToggle event={e} />)}
         {write && (
           <div className="odz-row" style={{ marginTop: '0.5rem' }}>
             <Button small variant="sec" onClick={() => { setErrors({}); setEditing({ id: e.id, form: formFrom(e) }) }}>
@@ -198,6 +211,20 @@ export default function Calendar() {
               <Field label="Location name" maxLength={120} value={editing.form.location_name} onChange={set('location_name')} error={errors.location_name} hint="Members only." />
               <Textarea label="Directions and address" maxLength={1000} value={editing.form.location_detail} onChange={set('location_detail')} error={errors.location_detail} hint="Members only." />
               <Textarea label="Description (markdown)" maxLength={5000} value={editing.form.description} onChange={set('description')} error={errors.description} hint="Members only. Plain markdown; no images or raw HTML." />
+              <PinFields
+                latitude={editing.form.latitude}
+                longitude={editing.form.longitude}
+                hidden={editing.form.hide_from_public_map}
+                error={errors.latitude}
+                onChange={(patch) => setEditing((cur) => (cur ? { ...cur, form: { ...cur.form, ...patch } } : cur))}
+              />
+              {!editing.id && (
+                <label className="odz-row" style={{ gap: '0.5rem', minHeight: '2.5rem' }}>
+                  <input type="checkbox" checked={editing.form.completed} onChange={(ev) => setEditing((cur) => (cur ? { ...cur, form: { ...cur.form, completed: ev.target.checked } } : cur))} />
+                  Past mission: record as completed
+                </label>
+              )}
+              {errors.completed && <p role="alert" style={{ color: 'var(--alert)' }}>{errors.completed}</p>}
               <div className="odz-row">
                 <Button type="submit" disabled={busy}>
                   {busy ? 'Saving' : 'Save event'}
