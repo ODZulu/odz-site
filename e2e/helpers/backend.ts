@@ -212,5 +212,6 @@ export async function cleanup(): Promise<void> {
   }
   await a.from('opportunities').delete().like('title', 'E2E %')
   await a.from('events').delete().like('title', 'E2E %')
+  await a.from('event_series').delete().like('title', 'E2E %')
   await resetInviteAttempts()
 }
