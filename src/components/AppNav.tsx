@@ -36,6 +36,7 @@ export function AppNav() {
       ))}
       {showDesignations && <NavLink to="/designations">DESIGNATIONS</NavLink>}
       {showDesignations && <NavLink to="/motions">MOTIONS</NavLink>}
+      {can('read_opportunities') && <NavLink to="/opportunities">OPPORTUNITIES</NavLink>}
       {(can("read_minutes") || can("write_minutes")) && <NavLink to="/minutes">MINUTES</NavLink>}
       {(can("read_documents") || can("publish_documents")) && <NavLink to="/documents">DOCS</NavLink>}
       {treasury && <NavLink to="/treasury">TREASURY</NavLink>}
