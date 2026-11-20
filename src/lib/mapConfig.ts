@@ -19,3 +19,13 @@ export const MAP_DEFAULT_CENTER = { lat: 33.4484, lng: -112.074 } as const
 export const MAP_DEFAULT_ZOOM = 9
 /** Zoom when there is a pin to show. */
 export const MAP_PIN_ZOOM = 14
+
+/** How long a map may take to get its style and first tiles before we say it could not load. */
+export const MAP_LOAD_TIMEOUT_MS = 15_000
+
+/** The plain message shown in place of a map that cannot load (MVA-258). The form still works. */
+export function mapFallbackMessage(editable: boolean): string {
+  return editable
+    ? 'The map could not load (offline, or blocked on this device). Type the latitude and longitude below instead.'
+    : 'The map could not load (offline, or blocked on this device). The pin coordinates are shown on the card.'
+}

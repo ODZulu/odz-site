@@ -14,9 +14,9 @@ test.afterAll(async () => {
 // network. It still makes a real MapLibre map (and needs WebGL), which is what is under test.
 const BLANK_STYLE = { version: 8, sources: {}, layers: [{ id: 'bg', type: 'background', paint: { 'background-color': '#cfd8dc' } }] }
 
-async function commandPage(browser: Browser, u: { email: string; password: string }): Promise<Page> {
+async function commandPage(browser: Browser, u: { email: string; password: string }, tilesBlocked = false): Promise<Page> {
   const ctx = await browser.newContext({ viewport: { width: 360, height: 740 } })
-  await ctx.route('https://tiles.openfreemap.org/**', (route) => route.fulfill({ json: BLANK_STYLE }))
+  await ctx.route('https://tiles.openfreemap.org/**', (route) => (tilesBlocked ? route.abort() : route.fulfill({ json: BLANK_STYLE })))
   const page = await ctx.newPage()
   await page.goto('/login')
   await page.getByLabel('Email').fill(u.email)
@@ -99,4 +99,18 @@ test('a saved pin shows a small map preview on the event card, loaded only when 
   const preview = card.getByRole('img', { name: 'Map showing the event location' })
   await expect(preview.locator('canvas')).toBeVisible()
   await expect(card.getByLabel('Event pin', { exact: true })).toBeVisible()
+})
+
+// MVA-258: a blocked or offline tile host must never leave a silent white box. Tier 2 cannot see
+// tiles, so this asserts only the message and that the coordinate fields still work.
+test('a map that cannot load says so, and the latitude and longitude fields still work', async ({ browser }) => {
+  const cmd = await seedUser('command', 'map-blocked')
+  const page = await commandPage(browser, cmd, true)
+  test.skip(!(await hasWebGL(page)), 'this browser has no WebGL')
+  await page.goto('/calendar')
+  await page.getByRole('button', { name: 'New event' }).click()
+  await expect(page.getByRole('status').filter({ hasText: /The map could not load/ })).toBeVisible()
+  await page.getByLabel('Latitude').fill('33.45')
+  await page.getByLabel('Longitude').fill('-112.07')
+  await expect(page.getByText('Pin set at 33.45, -112.07.')).toBeVisible()
 })
