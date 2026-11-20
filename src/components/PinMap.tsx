@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { Map as MapLibreMap, Marker, NavigationControl } from 'maplibre-gl'
+import '../lib/mapWorker'
 import 'maplibre-gl/dist/maplibre-gl.css'
-import { MAP_ATTRIBUTION, MAP_DEFAULT_CENTER, MAP_DEFAULT_ZOOM, MAP_PIN_ZOOM, MAP_STYLE_URL } from '../lib/mapConfig'
+import {
+  MAP_ATTRIBUTION, MAP_DEFAULT_CENTER, MAP_DEFAULT_ZOOM, MAP_LOAD_TIMEOUT_MS, MAP_PIN_ZOOM, MAP_STYLE_URL, mapFallbackMessage,
+} from '../lib/mapConfig'
 
 export type Pin = { lat: number; lng: number }
 
@@ -28,7 +31,8 @@ export default function PinMap({
   const pick = useRef(onPick)
   pick.current = onPick
   const first = useRef(value)
-  const [failed, setFailed] = useState(false)
+  const [failed, setFailed] = useState(false) // cannot start at all (no WebGL)
+  const [unavailable, setUnavailable] = useState(false) // started, but no style or tiles arrived
 
   // The map itself, created once per mode.
   useEffect(() => {
@@ -51,6 +55,17 @@ export default function PinMap({
       return
     }
     map.current = m
+    // Never leave a silent blank box (MVA-258): if the style or tiles cannot load (offline, a blocker,
+    // a dead worker) say so. If the map does finish loading after all, the message goes away again.
+    let loaded = false
+    const giveUp = () => { if (!loaded) setUnavailable(true) }
+    const timer = window.setTimeout(giveUp, MAP_LOAD_TIMEOUT_MS)
+    m.on('error', giveUp)
+    m.on('load', () => {
+      loaded = true
+      window.clearTimeout(timer)
+      setUnavailable(false)
+    })
     if (editable) {
       m.addControl(new NavigationControl({ showCompass: false }), 'top-right')
       m.on('click', (e) => {
@@ -59,6 +74,7 @@ export default function PinMap({
       })
     }
     return () => {
+      window.clearTimeout(timer)
       marker.current?.remove()
       marker.current = null
       m.remove()
@@ -93,13 +109,16 @@ export default function PinMap({
     if (!m.getBounds().contains([lng, lat])) m.easeTo({ center: [lng, lat], zoom: Math.max(m.getZoom(), MAP_PIN_ZOOM) })
   }, [lat, lng, editable])
 
-  if (failed) return <p className="odz-muted">The map could not start on this device. Use the coordinates below.</p>
+  if (failed) return <p className="odz-muted" role="status">{mapFallbackMessage(editable)}</p>
   return (
-    <div
-      ref={box}
-      role={editable ? 'application' : 'img'}
-      aria-label={editable ? 'Map. Tap to drop the event pin, drag the pin to move it.' : 'Map showing the event location'}
-      style={{ height, width: '100%', borderRadius: 4, overflow: 'hidden' }}
-    />
+    <>
+      {unavailable && <p className="odz-muted" role="status">{mapFallbackMessage(editable)}</p>}
+      <div
+        ref={box}
+        role={editable ? 'application' : 'img'}
+        aria-label={editable ? 'Map. Tap to drop the event pin, drag the pin to move it.' : 'Map showing the event location'}
+        style={{ height, width: '100%', borderRadius: 4, overflow: 'hidden', display: unavailable ? 'none' : undefined }}
+      />
+    </>
   )
 }
