@@ -1,6 +1,6 @@
-import { Link, useParams } from 'react-router'
+import { useParams } from 'react-router'
 import { useAuth } from '../auth/AuthProvider'
-import { Chip, KeyValue, Panel, TierMark } from '../components'
+import { ButtonLink, Chip, KeyValue, Panel, TierMark } from '../components'
 import { designationNamesFor } from '../lib/designations'
 import { findByCallsign } from '../lib/roster'
 import type { TierOption } from '../lib/retire'
@@ -118,7 +118,7 @@ export default function RosterDetail() {
       <>
         <h1 className="odz-title">Not found</h1>
         <p>
-          <Link to="/roster">Back to the roster</Link>
+          <ButtonLink to="/roster" variant="sec" small>Back to the roster</ButtonLink>
         </p>
       </>
     )
@@ -127,7 +127,7 @@ export default function RosterDetail() {
   return (
     <>
       <p style={{ marginBottom: '0.5rem' }}>
-        <Link to="/roster">Roster</Link>
+        <ButtonLink to="/roster" variant="sec" small>Roster</ButtonLink>
       </p>
       <h1 className="odz-title" style={{ marginBottom: '1rem' }}>
         {member.callsign}

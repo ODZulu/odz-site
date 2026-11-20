@@ -1,6 +1,5 @@
-import { Link } from 'react-router'
 import { useAuth } from '../auth/AuthProvider'
-import { Chip, KeyValue, Panel } from '../components'
+import { ButtonLink, Chip, KeyValue, Panel } from '../components'
 import { loadTraffic, authorLabel } from '../lib/hq'
 import type { ServiceEntry } from '../lib/service'
 import { supabase } from '../lib/supabase'
@@ -44,7 +43,7 @@ export default function RetiredHome() {
           <KeyValue items={[['Callsign', profile?.callsign ?? '-']]} />
         </Panel>
 
-        <Panel title="Traffic" action={<Link to="/traffic">More</Link>}>
+        <Panel title="Traffic" action={<ButtonLink to="/traffic" variant="sec" small>More</ButtonLink>}>
           {traffic.loading ? (
             <p className="odz-muted" role="status">
               Loading

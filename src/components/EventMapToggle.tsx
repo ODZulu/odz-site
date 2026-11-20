@@ -1,4 +1,5 @@
 import { lazy, Suspense, useState } from 'react'
+import { buttonClass } from './Button'
 
 const PinMap = lazy(() => import('./PinMap'))
 
@@ -10,7 +11,7 @@ export function EventMapToggle({ lat, lng }: { lat: number; lng: number }) {
   const [open, setOpen] = useState(false)
   return (
     <details onToggle={(e) => setOpen((e.currentTarget as HTMLDetailsElement).open)}>
-      <summary>Map</summary>
+      <summary className={buttonClass('sec', true)}>Map</summary>
       {open && (
         <div style={{ margin: '0.5rem 0' }}>
           <Suspense fallback={<p className="odz-muted" role="status">Loading map</p>}>

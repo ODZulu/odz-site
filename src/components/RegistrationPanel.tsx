@@ -18,7 +18,7 @@ import {
 import { supabase } from '../lib/supabase'
 import { formatStampPhoenix, fromLocalInput, toLocalInput } from '../lib/time'
 import { useLoad } from '../lib/useLoad'
-import { Button } from './Button'
+import { Button, buttonClass } from './Button'
 import { ConfirmAction } from './ConfirmAction'
 import { Field } from './Field'
 import { Select } from './Select'
@@ -40,7 +40,7 @@ export function RegistrationToggle({ event, onChanged }: { event: EventLite; onC
   const [open, setOpen] = useState(false)
   return (
     <details onToggle={(e) => setOpen((e.currentTarget as HTMLDetailsElement).open)}>
-      <summary>Registration</summary>
+      <summary className={buttonClass('sec', true)}>Registration</summary>
       {open && <RegistrationPanel event={event} onChanged={onChanged} />}
     </details>
   )
@@ -218,7 +218,7 @@ function Settings({ event, info, onDone }: { event: EventLite; info: Registratio
 
   return (
     <details>
-      <summary>Registration settings</summary>
+      <summary className={buttonClass('sec', true)}>Registration settings</summary>
       <div className="odz-stack" style={{ marginTop: '0.5rem' }}>
         <Field label="Opens (Phoenix time)" type="datetime-local" value={form.opens} onChange={set('opens')} error={errors.opens} />
         <Field label="Closes (optional)" type="datetime-local" value={form.closes} onChange={set('closes')} error={errors.closes} />
@@ -253,7 +253,7 @@ function MemberAction({
   const [reason, setReason] = useState('')
   return (
     <details>
-      <summary>{title}</summary>
+      <summary className={buttonClass('sec', true)}>{title}</summary>
       <div className="odz-stack" style={{ marginTop: '0.5rem' }}>
         <Select
           label="Member"

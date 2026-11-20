@@ -1,7 +1,6 @@
 import { useState, type FormEvent } from 'react'
-import { Link } from 'react-router'
 import { useAuth } from '../auth/AuthProvider'
-import { Button, Chip, ConfirmAction, Field, Panel, Textarea } from '../components'
+import { Button, ButtonLink, Chip, ConfirmAction, Field, Panel, Textarea } from '../components'
 import {
   archiveTraffic,
   authorLabel,
@@ -64,7 +63,7 @@ export default function Traffic() {
   return (
     <>
       <p style={{ marginBottom: '0.5rem' }}>
-        <Link to={home}>{profile?.status === 'retired' ? 'Home' : 'HQ'}</Link>
+        <ButtonLink to={home} variant="sec" small>{profile?.status === 'retired' ? 'Home' : 'HQ'}</ButtonLink>
       </p>
       <h1 className="odz-title" style={{ marginBottom: '1rem' }}>
         Traffic

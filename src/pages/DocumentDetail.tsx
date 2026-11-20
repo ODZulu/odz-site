@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, Navigate, useParams, useSearchParams } from 'react-router'
 import { useAuth } from '../auth/AuthProvider'
-import { Button, KeyValue, Panel } from '../components'
+import { Button, ButtonLink, KeyValue, Panel } from '../components'
 import { buttonClass } from '../components/Button'
 import { getDocument, groupBySlug, listDocuments } from '../lib/documents'
 import { Markdown, markdownHeadings } from '../lib/markdown'
@@ -35,7 +35,7 @@ export default function DocumentDetail() {
       <>
         <h1 className="odz-title">Not found</h1>
         <p>
-          <Link to="/documents">Back to the documents</Link>
+          <ButtonLink to="/documents" variant="sec" small>Back to the documents</ButtonLink>
         </p>
       </>
     )
@@ -47,7 +47,7 @@ export default function DocumentDetail() {
   return (
     <>
       <p style={{ marginBottom: '0.5rem' }} className="odz-noprint">
-        <Link to="/documents">Documents</Link>
+        <ButtonLink to="/documents" variant="sec" small>Documents</ButtonLink>
       </p>
       <div className="odz-row" style={{ justifyContent: 'space-between', marginBottom: '1rem' }}>
         <h1 className="odz-title">{chosen.title}</h1>
