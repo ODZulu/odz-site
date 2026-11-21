@@ -78,7 +78,7 @@ test('Command makes a Command-only weekly series; lower tiers and the public nev
   await expect(cp.getByLabel('Starts (Phoenix time)')).toHaveValue('')
   await cp.getByLabel('Starts (Phoenix time)').fill('2030-01-05T10:00')
   await cp.getByRole('button', { name: 'Save event' }).click()
-  await expect(cp.getByRole('button', { name: 'Save event' })).toHaveCount(0) // saved, audience applied
+  await expect(cp.getByRole('button', { name: /^(Save event|Saving)$/ })).toHaveCount(0) // closed only after both RPCs (save_event, event_set_audience) finish; while busy the button reads "Saving"
   const dup = await admin().from('events').select('id,audience,series_id').eq('title', `${base} Renamed`).gte('starts_at', '2029-12-31')
   expect(dup.data).toHaveLength(1)
   expect(dup.data?.[0].audience).toBe('command')
