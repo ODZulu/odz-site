@@ -157,14 +157,14 @@ test('MVA-260: an open opportunity shows as a Prospect in the calendar and HQ, n
   // Calendar: labelled Prospect, no RSVP or registration controls, not counted as an event.
   await mp.goto('/calendar')
   await expect(prospect(mp, keepTitle)).toBeVisible()
-  await expect(prospect(mp, keepTitle).getByText('PROSPECT')).toBeVisible()
+  await expect(prospect(mp, keepTitle).getByText('PROSPECT', { exact: true })).toBeVisible()
   await expect(prospect(mp, keepTitle).getByRole('button')).toHaveCount(0)
   expect(await noSideScroll(mp)).toBe(true)
 
   // HQ schedule: marked as a prospect, and it is not the "Next event".
   await mp.goto('/hq')
-  await expect(mp.getByText(keepTitle)).toBeVisible()
-  await expect(mp.getByText('PROSPECT').first()).toBeVisible()
+  await expect(mp.getByText(keepTitle, { exact: true })).toBeVisible()
+  await expect(mp.getByText('PROSPECT', { exact: true }).first()).toBeVisible()
   await expect(mp.getByRole('link', { name: 'Open the event to answer' })).toHaveCount(0)
 
   // Tapping it opens the opportunity, where interest is answered.
@@ -193,10 +193,10 @@ test('MVA-260: an open opportunity shows as a Prospect in the calendar and HQ, n
   await expect(prospect(mp, keepTitle)).toHaveCount(0)
   await expect(prospect(mp, dropTitle)).toHaveCount(0)
   await expect(mp.getByRole('heading', { name: keepTitle })).toBeVisible() // the real event
-  await expect(mp.getByText('PROSPECT')).toHaveCount(0)
+  await expect(mp.getByText('PROSPECT', { exact: true })).toHaveCount(0)
 
   // Logged out: the public calendar shows no prospects at all.
   const anon = await (await browser.newContext()).newPage()
   await anon.goto('/calendar')
-  await expect(anon.getByText('PROSPECT')).toHaveCount(0)
+  await expect(anon.getByText('PROSPECT', { exact: true })).toHaveCount(0)
 })
