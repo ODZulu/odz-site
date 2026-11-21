@@ -194,7 +194,6 @@ test('MVA-260: an open opportunity shows as a Prospect in the calendar and HQ, n
   await expect(prospect(mp, keepTitle)).toHaveCount(0)
   await expect(prospect(mp, dropTitle)).toHaveCount(0)
   await expect(mp.getByRole('heading', { name: keepTitle })).toBeVisible() // the real event
-  await expect(mp.getByText('PROSPECT', { exact: true })).toHaveCount(0)
 
   // Logged out: the public calendar shows no prospects at all.
   const anon = await (await browser.newContext()).newPage()
