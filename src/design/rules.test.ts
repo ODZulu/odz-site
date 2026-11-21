@@ -18,21 +18,55 @@ function contrast(a: string, b: string): number {
 }
 
 describe('contrast (non-negotiable: text at least 4.5:1)', () => {
-  const grounds = ['ground', 'surface', 'surface-raised', 'deep']
-  const textColors = ['ink', 'ink-muted', 'primary', 'accent', 'go', 'pending', 'alert']
+  // Every surface a text token can sit on. surface-hover is the worst case.
+  const grounds = ['ground', 'deep', 'field', 'surface', 'surface-top', 'surface-raised', 'surface-hover']
+  const textColors = ['ink', 'ink-muted', 'ink-subtle', 'primary', 'primary-soft', 'accent', 'go', 'pending', 'alert']
   for (const fg of textColors) {
     for (const bg of grounds) {
       it(`${fg} on ${bg}`, () => expect(contrast(color[fg], color[bg])).toBeGreaterThanOrEqual(4.5))
     }
   }
-  it('on-primary on primary', () => expect(contrast(color['on-primary'], color.primary)).toBeGreaterThanOrEqual(4.5))
-  it('on-accent on accent', () => expect(contrast(color['on-accent'], color.accent)).toBeGreaterThanOrEqual(4.5))
-  it('on-accent on the filled alert chip', () => expect(contrast(color['on-accent'], color.alert)).toBeGreaterThanOrEqual(4.5))
-  for (const bg of ['ground', 'surface']) {
+  it('ink-subtle keeps at least 4.8:1 on every surface (headroom if a surface or gradient shifts)', () => {
+    for (const bg of grounds) expect(contrast(color['ink-subtle'], color[bg])).toBeGreaterThanOrEqual(4.8)
+  })
+
+  // Text on fills.
+  const fills: Array<[string, string]> = [
+    ['on-primary', 'primary'],
+    ['on-primary', 'primary-soft'],
+    ['on-accent', 'accent'],
+    ['on-accent', 'alert'],
+    ['on-primary', 'alert-fill'],
+    ['on-tint-sage', 'tint-sage'],
+    ['on-tint-sand', 'tint-sand'],
+    ['on-tint-steel', 'tint-steel'],
+    ['on-tint-clay', 'tint-clay'],
+    ['on-tint-notice', 'tint-notice'],
+  ]
+  for (const [fg, bg] of fills) {
+    it(`${fg} on ${bg}`, () => expect(contrast(color[fg], color[bg])).toBeGreaterThanOrEqual(4.5))
+  }
+
+  // Non-text: control borders and the focus ring need 3:1 on every surface.
+  for (const bg of grounds) {
     it(`line-strong on ${bg} is 3:1+ (control borders)`, () =>
       expect(contrast(color['line-strong'], color[bg])).toBeGreaterThanOrEqual(3))
     it(`focus ring on ${bg} is 3:1+`, () => expect(contrast(color.focus, color[bg])).toBeGreaterThanOrEqual(3))
   }
+})
+
+describe('type floors (MVA-297)', () => {
+  const css = readFileSync('src/design/odz.css', 'utf8')
+  it('no font size under 12px (0.75rem) in component CSS', () => {
+    const sizes = [...css.matchAll(/font-size:\s*([\d.]+)rem/g)].map((m) => parseFloat(m[1]))
+    expect(sizes.length).toBeGreaterThan(0)
+    expect(sizes.filter((s) => s < 0.75)).toEqual([])
+  })
+  it('body text is at least 14px (0.875rem)', () => {
+    const body = css.match(/--body-size:\s*([\d.]+)rem/)
+    expect(body).not.toBeNull()
+    expect(parseFloat((body as RegExpMatchArray)[1])).toBeGreaterThanOrEqual(0.875)
+  })
 })
 
 function walk(dir: string): string[] {

@@ -1,22 +1,39 @@
-/* ODZ — Field Standard tokens. Generated from tokens.json; edit that, not this. MVA-139: px values converted to rem (px/16) by hand; redo the conversion if regenerated. */
+/* ODZ — HQ theme tokens (MVA-297; was Field Standard). Generated from tokens.json; edit that, not this. MVA-139: px values converted to rem (px/16) by hand; redo the conversion if regenerated. */
 :root {
   /* colour */
-  --ground: #232b1d;
-  --surface: #2f3a26;
-  --surface-raised: #36432c;
-  --deep: #151a12;
-  --line: #4a5840;
+  --ground: #101510;
+  --surface: #171d17;
+  --surface-raised: #1c241c;
+  --deep: #121712;
+  --line: #2b3429;
   --line-strong: #8a9677;
-  --ink: #ece3cc;
-  --ink-muted: #bdb294;
-  --primary: #cdae78;
-  --on-primary: #151a12;
+  --ink: #e8e8d9;
+  --ink-muted: #92988b;
+  --primary: #c9a86b;
+  --on-primary: #101510;
   --accent: #eb9a52;
-  --on-accent: #151a12;
-  --go: #a6d86f;
-  --pending: #e6c35c;
+  --on-accent: #101510;
+  --go: #a6c199;
+  --pending: #d4ae70;
   --alert: #f58f76;
   --focus: #f2d45c;
+  --field: #131913;
+  --surface-top: #1a211a;
+  --surface-hover: #202820;
+  --ink-subtle: #8c9588;
+  --primary-soft: #d9bd87;
+  --alert-fill: #c36c54;
+  --tint-sage: #29382e;
+  --on-tint-sage: #a9c49f;
+  --tint-sand: #393328;
+  --on-tint-sand: #dac08a;
+  --tint-steel: #252f32;
+  --on-tint-steel: #a8b8c0;
+  --tint-clay: #3a2e2b;
+  --on-tint-clay: #d2a093;
+  --tint-notice: #29261c;
+  --on-tint-notice: #e5d3a9;
+  --notice-line: #6c5b39;
   --mark-navy: #192f5d;
   --mark-red: #bd3d44;
   --mark-gold: #ffd608;
@@ -32,6 +49,9 @@
   /* radius */
   --radius-0: 0;
   --radius-1: 0.125rem;
+  --radius-2: 0.4375rem;
+  --radius-3: 0.625rem;
+  --radius-4: 0.75rem;
   --radius-full: 624.9375rem;
   /* font stacks */
   --font-field-display: "Saira Stencil One", "Saira Condensed", sans-serif;
