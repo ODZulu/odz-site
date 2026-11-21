@@ -161,11 +161,12 @@ test('MVA-260: an open opportunity shows as a Prospect in the calendar and HQ, n
   await expect(prospect(mp, keepTitle).getByRole('button')).toHaveCount(0)
   expect(await noSideScroll(mp)).toBe(true)
 
-  // HQ schedule: marked as a prospect, and it is not the "Next event".
+  // HQ schedule: marked as a prospect, and it is never the "Next event" (a real event may be).
   await mp.goto('/hq')
   await expect(mp.getByText(keepTitle, { exact: true })).toBeVisible()
   await expect(mp.getByText('PROSPECT', { exact: true }).first()).toBeVisible()
-  await expect(mp.getByRole('link', { name: 'Open the event to answer' })).toHaveCount(0)
+  await expect(mp.locator('section.odz-panel').filter({ has: mp.getByRole('heading', { name: 'Next event' }) }).getByText(keepTitle)).toHaveCount(0)
+  await expect(mp.locator('section.odz-panel').filter({ has: mp.getByRole('heading', { name: 'Schedule' }) }).getByText('PROSPECT', { exact: true })).toBeVisible()
 
   // Tapping it opens the opportunity, where interest is answered.
   await mp.goto('/calendar')
