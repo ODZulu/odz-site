@@ -41,7 +41,7 @@ test('signing out from HQ, the calendar and a profile page lands on the login pa
     await signIn(page, member)
     if (path === '/calendar') {
       await page.goto('/calendar')
-      await expect(page.getByText(WHERE)).toBeVisible() // member data is on screen before signing out
+      await expect(page.getByText(WHERE).first()).toBeVisible() // member data is on screen before signing out
     }
     await signOutFrom(page, path)
   }
@@ -49,17 +49,18 @@ test('signing out from HQ, the calendar and a profile page lands on the login pa
 
 test('after signing out, Back does not show member pages or data', async ({ page }) => {
   const member = await seedUser('member', 'out-back')
-  await createEventRow({ title: 'E2E Fake Back Event', location: WHERE, inDays: 3 })
+  const where = 'E2E Fake Back Field' // its own text: the other tests' events are still in the database
+  await createEventRow({ title: 'E2E Fake Back Event', location: where, inDays: 3 })
   await signIn(page, member)
   await page.goto('/calendar')
-  await expect(page.getByText(WHERE)).toBeVisible()
+  await expect(page.getByText(where)).toBeVisible()
   await page.getByRole('button', { name: 'Sign out' }).click()
   await expect(page).toHaveURL(/\/login$/)
 
   for (let i = 0; i < 3; i++) {
     await page.goBack().catch(() => undefined)
     await page.waitForLoadState('domcontentloaded')
-    await expect(page.locator('body')).not.toContainText(WHERE)
+    await expect(page.locator('body')).not.toContainText(where)
     await expect(page.getByRole('button', { name: 'Sign out' })).toHaveCount(0)
   }
 })

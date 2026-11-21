@@ -79,11 +79,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const lastAt = useRef(0)
   const inFlight = useRef(false)
 
+  // `navigate` changes identity on every route change. signOut must stay stable: loadProfile depends on it,
+  // and a new loadProfile re-reads the profile on every navigation (which also signed out a suspended account).
   const navigate = useNavigate()
+  const navigateRef = useRef(navigate)
+  navigateRef.current = navigate
   // Sign out always ends on the login page, from any page, including the public ones (MVA-300).
   const signOut = useCallback(
-    () => performSignOut({ auth: supabase?.auth, clear: () => setLoaded(null), go: (path) => navigate(path, { replace: true }) }),
-    [navigate],
+    () => performSignOut({ auth: supabase?.auth, clear: () => setLoaded(null), go: (path) => navigateRef.current(path, { replace: true }) }),
+    [],
   )
 
   // A page restored from the back/forward cache is the old DOM: after a sign-out it could still show member data.
