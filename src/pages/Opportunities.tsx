@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useLocation } from 'react-router'
 import { useAuth } from '../auth/AuthProvider'
 import { Button, ConfirmAction, Chip, Field, Panel, Select, Textarea } from '../components'
 import { buttonClass } from '../components/Button'
@@ -22,6 +23,7 @@ import {
   type Response,
   type StatusFilter,
 } from '../lib/opportunities'
+import { idFromHash, prospectAnchor } from '../lib/prospects'
 import { supabase } from '../lib/supabase'
 import { formatPlainDate } from '../lib/time'
 import { useLoad } from '../lib/useLoad'
@@ -43,6 +45,12 @@ export default function Opportunities() {
     return data as Opportunity[]
   })
   const rows = filterOpportunities(list.data ?? [], status, onlyIn)
+  // A prospect in the calendar or hub links here (MVA-260): scroll to that card once the list is in.
+  const { hash } = useLocation()
+  const target = idFromHash(hash)
+  useEffect(() => {
+    if (target) document.getElementById(prospectAnchor(target))?.scrollIntoView({ block: 'start' })
+  }, [target, list.data])
   const me = session?.user.id
 
   return (
@@ -150,7 +158,7 @@ function OpportunityCard({
   }
 
   return (
-    <li className="odz-panel" style={{ padding: '0.75rem 1rem' }}>
+    <li id={prospectAnchor(o.id)} className="odz-panel" style={{ padding: '0.75rem 1rem', scrollMarginTop: '4rem' }}>
       <div className="odz-row" style={{ justifyContent: 'space-between', gap: '0.5rem' }}>
         <h2 className="odz-day" style={{ margin: 0 }}>
           {o.title}

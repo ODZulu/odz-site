@@ -203,6 +203,8 @@
 .odz-event { background: var(--surface); border: 1px solid var(--line); padding: .75rem 1rem; }
 .odz-event + .odz-event { margin-top: .5rem; }
 .odz-event[data-cancelled] .odz-event__title { text-decoration: line-through; color: var(--ink-muted); }
+.odz-event--prospect { border-style: dashed; border-color: var(--line-strong); background: transparent; }
+.odz-sched--prospect { border-left: 3px dashed var(--line-strong); padding-left: .625rem; }
 .odz-event__time { font-family: var(--f-data); color: var(--primary); }
 .odz-event__title { font-family: var(--f-head); font-weight: 700; font-size: 1.25rem; letter-spacing: .03em; }
 .odz-event summary:not(.odz-btn) { cursor: pointer; min-height: var(--touch); display: flex; align-items: center; color: var(--primary); }
