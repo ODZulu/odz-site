@@ -25,6 +25,9 @@ test('login links to the forgot-password page, which gives the neutral message f
   await page.goto('/login')
   await page.getByRole('link', { name: 'Forgot password?' }).click()
   await expect(page).toHaveURL(/\/forgot-password$/)
+  // The URL changes before the new page is on screen, and the login page also has an Email box (MVA-256):
+  // wait for this page's own heading so the address is typed into the right form.
+  await expect(page.getByRole('heading', { name: 'Reset password' })).toBeVisible()
   await page.getByLabel('Email').fill(`nobody-${uniq()}@example.invalid`)
   await page.getByRole('button', { name: 'Send reset link' }).click()
   await expect(page.getByRole('status')).toHaveText(NEUTRAL)
