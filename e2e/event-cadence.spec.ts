@@ -1,5 +1,6 @@
 import { expect, test, type Browser, type Page } from '@playwright/test'
 import { admin, asUser, cleanup, createEventRow, hasBackend, resetInviteAttempts, seedUser } from './helpers/backend'
+import { moveEventLater, phoenixDay, phoenixInstant } from './helpers/dates'
 
 test.skip(!hasBackend, 'needs a local Supabase stack (see docs/TESTING.md)')
 
@@ -24,7 +25,6 @@ async function signInPage(browser: Browser, u: { email: string; password: string
 // Match the card by its exact heading: a prep meeting's title contains its event's title.
 const article = (page: Page, title: string) =>
   page.locator('article.odz-event').filter({ has: page.getByRole('heading', { name: title, exact: true }) })
-const localStamp = (days: number) => `${new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10)}T10:00`
 
 test('Command builds a prep cadence, applies it (past steps are skipped and named), moves the event, then cancels it', async ({ browser }) => {
   const cmd = await seedUser('command', 'cad-cmd')
@@ -75,16 +75,25 @@ test('Command builds a prep cadence, applies it (past steps are skipped and name
   await article(cp, eventTitle).first().getByLabel('Prep cadence').selectOption({ label: 'E2E Fake Op prep' })
   await expect(article(cp, eventTitle).first().getByText(/Briefing: .*Already matches/)).toBeVisible()
 
-  // Move the event five days later: the prep meeting keeps its seven-day offset.
+  // Move the event five Phoenix days later: the prep meeting keeps its seven-day offset. The date to
+  // type and the expected shift both come from the event's own seeded start, so the test gives the same
+  // answer at any time of day and across month and year boundaries (MVA-298).
+  const eventBefore = await admin().from('events').select('starts_at').eq('id', ev.id).single()
   const before = new Date(made.data?.[0].starts_at as string).getTime()
+  const move = moveEventLater(eventBefore.data?.starts_at as string, 5)
+  expect(move.shiftDays).toBe(5)
   await article(cp, eventTitle).first().getByRole('button', { name: 'Edit' }).click()
-  await cp.getByLabel('Starts (Phoenix time)').fill(localStamp(25))
+  await cp.getByLabel('Starts (Phoenix time)').fill(move.input)
   await cp.getByLabel('Ends (optional)').fill('')
   await cp.getByRole('button', { name: 'Save event' }).click()
   await expect(cp.getByRole('button', { name: 'Save event' })).toHaveCount(0)
   const moved = await admin().from('events').select('starts_at').eq('source_event_id', ev.id).single()
-  const shift = (new Date(moved.data?.starts_at as string).getTime() - before) / 86_400_000
-  expect(Math.round(shift)).toBe(5)
+  // The event itself landed on the day we typed, and the meeting moved by exactly the same whole days
+  // at the same time of day (Phoenix has no daylight saving, so no rounding is needed).
+  const eventAfter = await admin().from('events').select('starts_at').eq('id', ev.id).single()
+  expect(new Date(eventAfter.data?.starts_at as string).getTime()).toBe(phoenixInstant(move.input).getTime())
+  expect(phoenixDay(eventAfter.data?.starts_at as string)).toBe(move.input.slice(0, 10))
+  expect(new Date(moved.data?.starts_at as string).getTime() - before).toBe(move.shiftDays * 86_400_000)
 
   // Cancel the event: its future prep meeting is cancelled too.
   await cp.reload()
