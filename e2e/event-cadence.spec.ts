@@ -86,7 +86,7 @@ test('Command builds a prep cadence, applies it (past steps are skipped and name
   await cp.getByLabel('Starts (Phoenix time)').fill(move.input)
   await cp.getByLabel('Ends (optional)').fill('')
   await cp.getByRole('button', { name: 'Save event' }).click()
-  await expect(cp.getByRole('button', { name: 'Save event' })).toHaveCount(0)
+  await expect(cp.getByRole('button', { name: /^(Save event|Saving)$/ })).toHaveCount(0)
   const moved = await admin().from('events').select('starts_at').eq('source_event_id', ev.id).single()
   // The event itself landed on the day we typed, and the meeting moved by exactly the same whole days
   // at the same time of day (Phoenix has no daylight saving, so no rounding is needed).
