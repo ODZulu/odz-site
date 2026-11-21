@@ -130,3 +130,73 @@ test('RLS: a Recruit and the public get nothing; nobody writes the tables direct
   expect((await anon.from('opportunities').select('id')).data ?? []).toHaveLength(0)
   expect((await anon.rpc('opportunity_list')).error).not.toBeNull()
 })
+
+// Phoenix is UTC-7 all year: tomorrow's date there, as YYYY-MM-DD.
+const phoenixTomorrow = () => new Date(Date.now() - 7 * 3600_000 + 24 * 3600_000).toISOString().slice(0, 10)
+
+test('MVA-260: an open opportunity shows as a Prospect in the calendar and HQ, never as an event; promote and drop clear it', async ({ browser }) => {
+  const member = await seedUser('member', 'prosp-mem')
+  const cmd = await seedUser('command', 'prosp-cmd')
+  const keepTitle = 'E2E Fake Prospect Keep'
+  const dropTitle = 'E2E Fake Prospect Drop'
+  const m = await asUser(member.email, member.password)
+  const ids: string[] = []
+  for (const title of [keepTitle, dropTitle]) {
+    const r = await m.rpc('opportunity_save', {
+      p_id: null, p_title: title, p_host: null, p_source_url: null, p_starts_on: phoenixTomorrow(), p_ends_on: null,
+      p_location_text: 'Fake Field', p_latitude: null, p_longitude: null, p_est_cost_cents: null, p_notes: null,
+    })
+    expect(r.error).toBeNull()
+    ids.push(r.data as string)
+  }
+  // An opportunity with no date cannot exist (start date is required), so nothing undated can leak in.
+
+  const mp = await signInPage(browser, member)
+  const prospect = (page: Page, title: string) => page.getByRole('article', { name: `Prospect: ${title}` })
+
+  // Calendar: labelled Prospect, no RSVP or registration controls, not counted as an event.
+  await mp.goto('/calendar')
+  await expect(prospect(mp, keepTitle)).toBeVisible()
+  await expect(prospect(mp, keepTitle).getByText('PROSPECT')).toBeVisible()
+  await expect(prospect(mp, keepTitle).getByRole('button')).toHaveCount(0)
+  expect(await noSideScroll(mp)).toBe(true)
+
+  // HQ schedule: marked as a prospect, and it is not the "Next event".
+  await mp.goto('/hq')
+  await expect(mp.getByText(keepTitle)).toBeVisible()
+  await expect(mp.getByText('PROSPECT').first()).toBeVisible()
+  await expect(mp.getByRole('link', { name: 'Open the event to answer' })).toHaveCount(0)
+
+  // Tapping it opens the opportunity, where interest is answered.
+  await mp.goto('/calendar')
+  await prospect(mp, keepTitle).getByRole('link', { name: 'View opportunity' }).click()
+  await expect(mp).toHaveURL(new RegExp(`/opportunities#opp-${ids[0]}$`))
+  await expect(card(mp, keepTitle)).toBeVisible()
+  await card(mp, keepTitle).getByRole('button', { name: 'In', exact: true }).click()
+  await expect(card(mp, keepTitle).getByText('1 In, 0 Maybe, 0 Out · You: In')).toBeVisible()
+
+  // Command promotes one and drops the other: both prospects leave the calendar; the event takes the place of the promoted one.
+  const cp = await signInPage(browser, cmd)
+  await cp.goto('/opportunities')
+  await card(cp, keepTitle).getByRole('button', { name: 'Promote to event' }).click()
+  await cp.getByLabel('Event type').selectOption('Op')
+  await cp.getByRole('button', { name: 'Promote', exact: true }).click()
+  await cp.getByRole('button', { name: 'Confirm promote' }).click()
+  await expect(cp.getByRole('status').filter({ hasText: 'Promoted.' })).toBeVisible()
+  await card(cp, dropTitle).getByRole('button', { name: 'Drop' }).click()
+  await cp.getByLabel('Reason for dropping').fill('Fake reason: not this one')
+  await cp.getByRole('button', { name: 'Drop', exact: true }).click()
+  await cp.getByRole('button', { name: 'Confirm drop' }).click()
+  await expect(cp.getByRole('status').filter({ hasText: 'Dropped.' })).toBeVisible()
+
+  await mp.goto('/calendar')
+  await expect(prospect(mp, keepTitle)).toHaveCount(0)
+  await expect(prospect(mp, dropTitle)).toHaveCount(0)
+  await expect(mp.getByRole('heading', { name: keepTitle })).toBeVisible() // the real event
+  await expect(mp.getByText('PROSPECT')).toHaveCount(0)
+
+  // Logged out: the public calendar shows no prospects at all.
+  const anon = await (await browser.newContext()).newPage()
+  await anon.goto('/calendar')
+  await expect(anon.getByText('PROSPECT')).toHaveCount(0)
+})

@@ -2,6 +2,7 @@ import { Link } from 'react-router'
 import { useAuth } from '../auth/AuthProvider'
 import { ButtonLink, Chip, KeyValue, Panel } from '../components'
 import { ReadinessMeter } from '../components/ReadinessMeter'
+import { loadProspects, mergeSchedule, prospectHref } from '../lib/prospects'
 import { listEvents, listPublicEvents, splitUpcoming, type EventDetails, type PublicEvent } from '../lib/events'
 import { authorLabel, breakdownBars, loadReadiness, loadTierBreakdown, loadTraffic } from '../lib/hq'
 import { formatDateLine, formatStampPhoenix, formatTimeL } from '../lib/time'
@@ -20,6 +21,10 @@ export default function Hq() {
   const events = useLoad<AnyEvent[]>(() => (detail ? listEvents() : listPublicEvents()), [detail])
   const upcoming = splitUpcoming(events.data ?? [], new Date()).upcoming.filter((e) => e.status === 'scheduled')
   const next = upcoming[0]
+  // Prospects (MVA-260) join the schedule only. They are never "next event" and carry no readiness.
+  const seeProspects = can('read_opportunities')
+  const prospects = useLoad(() => (seeProspects ? loadProspects(new Date()) : Promise.resolve([])), [seeProspects])
+  const schedule = mergeSchedule(upcoming, prospects.data ?? [], new Date())
 
   const readiness = useLoad(() => (next && detail ? loadReadiness(next.id) : Promise.resolve(null)), [next?.id, detail])
   const traffic = useLoad(() => loadTraffic(5))
