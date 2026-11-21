@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useAuth } from '../auth/AuthProvider'
 import { Button, ConfirmAction, Chip, Field, Panel, Select, Textarea } from '../components'
+import { buttonClass } from '../components/Button'
 import { EVENT_TYPES, type EventType } from '../lib/events'
 import {
   costLabel,
@@ -161,7 +162,7 @@ function OpportunityCard({
       <p className="odz-muted">Cost: {costLabel(o.est_cost_cents)}</p>
       {o.source_url && (
         <p>
-          <a href={o.source_url} target="_blank" rel="noopener noreferrer">
+          <a href={o.source_url} target="_blank" rel="noopener noreferrer" className={buttonClass('sec', true)}>
             Event page
           </a>
         </p>

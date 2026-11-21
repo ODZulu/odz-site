@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router'
-import { Button, Chip, Panel } from '../components'
+import { Button, ButtonLink, Chip, Panel } from '../components'
 import {
   currentSupport,
   disablePush,
@@ -86,7 +85,7 @@ export default function NotificationSettings() {
   return (
     <>
       <p style={{ marginBottom: '0.5rem' }}>
-        <Link to="/notifications">Notifications</Link>
+        <ButtonLink to="/notifications" variant="sec" small>Notifications</ButtonLink>
       </p>
       <h1 className="odz-title" style={{ marginBottom: '1rem' }}>
         Notification settings

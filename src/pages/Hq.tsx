@@ -1,6 +1,6 @@
 import { Link } from 'react-router'
 import { useAuth } from '../auth/AuthProvider'
-import { Chip, KeyValue, Panel } from '../components'
+import { ButtonLink, Chip, KeyValue, Panel } from '../components'
 import { ReadinessMeter } from '../components/ReadinessMeter'
 import { listEvents, listPublicEvents, splitUpcoming, type EventDetails, type PublicEvent } from '../lib/events'
 import { authorLabel, breakdownBars, loadReadiness, loadTierBreakdown, loadTraffic } from '../lib/hq'
@@ -63,7 +63,7 @@ export default function Hq() {
             )}
           </Panel>
 
-          <Panel title="Traffic" action={<Link to="/traffic">More</Link>}>
+          <Panel title="Traffic" action={<ButtonLink to="/traffic" variant="sec" small>More</ButtonLink>}>
             {traffic.loading ? (
               <p className="odz-muted" role="status">
                 Loading
@@ -88,7 +88,7 @@ export default function Hq() {
         </div>
 
         <div className="odz-col">
-          <Panel title="Schedule" action={<Link to="/calendar">Calendar</Link>}>
+          <Panel title="Schedule" action={<ButtonLink to="/calendar" variant="sec" small>Calendar</ButtonLink>}>
             {events.loading ? (
               <p className="odz-muted" role="status">
                 Loading

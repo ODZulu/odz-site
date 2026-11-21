@@ -1,5 +1,5 @@
-import { Link, useNavigate } from 'react-router'
-import { Button, Chip, Panel } from '../components'
+import { useNavigate } from 'react-router'
+import { Button, ButtonLink, Chip, Panel } from '../components'
 import { KIND_LABEL, loadNotifications, markAllRead, markRead, type NotificationRow } from '../lib/notifications'
 import { safeLink } from '../lib/pushPayload'
 import { formatStampPhoenix } from '../lib/time'
@@ -20,7 +20,7 @@ export default function Notifications() {
       <div className="odz-row" style={{ justifyContent: 'space-between', marginBottom: '1rem' }}>
         <h1 className="odz-title">Notifications</h1>
         <span className="odz-row">
-          <Link to="/settings/notifications">Settings</Link>
+          <ButtonLink to="/settings/notifications" variant="sec" small>Settings</ButtonLink>
           {unread > 0 && (
             <Button small variant="sec" onClick={async () => { await markAllRead(); await list.reload() }}>
               Mark all read

@@ -2,7 +2,7 @@ import { Link } from 'react-router'
 import subdued from '../assets/logos/odz-logo-subdued.png'
 import { useAuth } from '../auth/AuthProvider'
 import { formatStamp } from '../lib/format'
-import { Button } from './Button'
+import { Button, buttonClass } from './Button'
 import { NotificationBell } from './NotificationBell'
 import { TierMark } from './TierMark'
 
@@ -22,7 +22,7 @@ export function TopBar({ now = new Date() }: { now?: Date }) {
           (profile.status === 'retired' ? (
             <span className="odz-label">{profile.callsign}</span>
           ) : (
-            <Link to="/me" className="odz-label" aria-label="My profile">
+            <Link to="/me" className={buttonClass('sec', true)} aria-label="My profile">
               {profile.callsign}
             </Link>
           ))}

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
+import { buttonClass } from './Button'
 import { unreadCount } from '../lib/notifications'
 
 /** Bell with the unread count. Refreshes every minute and when the app comes back to the foreground. */
@@ -26,7 +27,7 @@ export function NotificationBell() {
   }, [])
 
   return (
-    <Link to="/notifications" className="odz-label" aria-label={count > 0 ? `Notifications, ${count} unread` : 'Notifications'}>
+    <Link to="/notifications" className={buttonClass('sec', true)} aria-label={count > 0 ? `Notifications, ${count} unread` : 'Notifications'}>
       ALERTS{count > 0 ? ` ${count > 99 ? '99+' : count}` : ''}
     </Link>
   )

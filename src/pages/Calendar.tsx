@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
-import { Link } from 'react-router'
 import { useAuth } from '../auth/AuthProvider'
-import { Button, Chip, ConfirmAction, Field, Panel, Select, Textarea } from '../components'
+import { Button, ButtonLink, Chip, ConfirmAction, Field, Panel, Select, Textarea } from '../components'
+import { buttonClass } from '../components/Button'
 import { listRegistrationEventIds, RegistrationToggle } from '../components/RegistrationPanel'
 import { RsvpToggle } from '../components/RsvpPanel'
 import {
@@ -141,7 +141,7 @@ export default function Calendar() {
         {detail && e.location_name && <p className="odz-muted">{e.location_name}</p>}
         {detail && (e.location_detail || e.description) && (
           <details>
-            <summary>Details</summary>
+            <summary className={buttonClass('sec', true)}>Details</summary>
             {e.location_detail && (
               <p style={{ margin: '0.5rem 0', whiteSpace: 'pre-wrap' }}>{e.location_detail}</p>
             )}
@@ -151,14 +151,14 @@ export default function Calendar() {
         {detail && e.latitude != null && e.longitude != null && (
           <p className="odz-muted">
             Pin {e.latitude}, {e.longitude}{' '}
-            <a href={geoLink(e.latitude, e.longitude)}>Open in maps app</a>{' · '}
-            <a href={osmLink(e.latitude, e.longitude)} target="_blank" rel="noopener noreferrer">View on OpenStreetMap</a>
+            <a href={geoLink(e.latitude, e.longitude)} className={buttonClass('sec', true)}>Open in maps app</a>{' '}
+            <a href={osmLink(e.latitude, e.longitude)} target="_blank" rel="noopener noreferrer" className={buttonClass('sec', true)}>View on OpenStreetMap</a>
           </p>
         )}
         {detail && e.latitude != null && e.longitude != null && <EventMapToggle lat={e.latitude} lng={e.longitude} />}
         {detail && prepTimeline(events.data ?? [], e.id).length > 0 && (
           <details>
-            <summary>{`Prep timeline (${prepTimeline(events.data ?? [], e.id).length})`}</summary>
+            <summary className={buttonClass('sec', true)}>{`Prep timeline (${prepTimeline(events.data ?? [], e.id).length})`}</summary>
             <ul style={{ margin: '0.5rem 0', paddingLeft: '1.25rem' }}>
               {prepTimeline(events.data ?? [], e.id).map((m) => (
                 <li key={m.id}>
@@ -172,7 +172,7 @@ export default function Calendar() {
         )}
         {detail && e.event_type === 'Meeting' && (
           <p style={{ margin: '0.5rem 0' }}>
-            <Link to={`/agenda/${e.id}`}>Agenda</Link>
+            <ButtonLink to={`/agenda/${e.id}`} variant="sec" small>Agenda</ButtonLink>
           </p>
         )}
         {detail && (registration.data?.has(e.id) ? <RegistrationToggle event={e} onChanged={() => void events.reload()} /> : e.status === 'completed' ? null : <RsvpToggle event={e} />)}
@@ -318,7 +318,7 @@ export default function Calendar() {
           ))}
           {past.length > 0 && (
             <details>
-              <summary className="odz-label" style={{ minHeight: 'var(--touch)', display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+              <summary className={buttonClass('sec', true)}>
                 {`Past events (${past.length})`}
               </summary>
               <div className="odz-agenda" style={{ marginTop: '1rem' }}>
