@@ -42,7 +42,7 @@ test.describe('desktop', () => {
     expect(box.y + box.height).toBeLessThan(800)
 
     // The user card holds the callsign link, the tier and the one sign-out.
-    await expect(side.getByRole('link', { name: /^My profile/ })).toBeVisible()
+    await expect(side.getByRole('link', { name: 'My profile', exact: true })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Sign out' })).toHaveCount(1)
     await expect(side.getByRole('button', { name: 'Sign out' })).toBeVisible()
 

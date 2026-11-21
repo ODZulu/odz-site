@@ -25,7 +25,7 @@ export function UserCard() {
         (profile.status === 'retired' ? (
           <span className="odz-heading">{profile.callsign}</span>
         ) : (
-          <Link to="/me" className={buttonClass('sec', true)} aria-label={`My profile, ${profile.callsign}`}>
+          <Link to="/me" className={buttonClass('sec', true)} aria-label="My profile">
             {profile.callsign}
           </Link>
         ))}
