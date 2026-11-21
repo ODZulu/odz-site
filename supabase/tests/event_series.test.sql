@@ -142,7 +142,7 @@ begin
   ------------------------------------------------------------------ individually edited instances are protected
   select id into a from public.events where series_id = sid order by starts_at limit 1;
   perform pg_temp.act(v_cmd);
-  perform public.save_event(a, 'Fake One-off Rename', 'Meeting', (select starts_at from public.events where id = a), (select ends_at from public.events where id = a), null, null, null);
+  perform public.save_event(a, 'Fake One-off Rename', 'Meeting', (select starts_at from public.events where id = a), (select ends_at from public.events where id = a), null, null, null, null, null, false, null, null);
   reset role;
   select series_edited into s from public.events where id = a;
   if s <> 'true' then raise exception 'FAIL: an edited instance is marked'; end if;
@@ -236,11 +236,11 @@ begin
   insert into public.events (title, event_type, starts_at) values ('Fake Plain Meeting', 'Meeting', now() + interval '9 days') returning id into ev_pub;
   insert into public.events (title, event_type, starts_at) values ('Fake Secret Meeting', 'Meeting', now() + interval '9 days') returning id into ev_cmd;
   perform pg_temp.act(v_mem);
-  perform pg_temp.fails(format('select public.event_set_audience(%L, ''command'')', ev_cmd), 'not allowed');
+  perform pg_temp.fails(format('select public.save_event(%L, ''Fake Secret Meeting'', ''Meeting'', now() + interval ''9 days'', null, null, null, null, null, null, false, null, ''command'')', ev_cmd), 'not allowed');
   reset role;
   perform pg_temp.act(v_cmd);
-  perform pg_temp.fails(format('select public.event_set_audience(%L, ''everyone'')', ev_cmd), 'invalid_audience');
-  perform public.event_set_audience(ev_cmd, 'command');
+  perform pg_temp.fails(format('select public.save_event(%L, ''Fake Secret Meeting'', ''Meeting'', now() + interval ''9 days'', null, null, null, null, null, null, false, null, ''everyone'')', ev_cmd), 'invalid_audience');
+  perform public.save_event(ev_cmd, 'Fake Secret Meeting', 'Meeting', now() + interval '9 days', null, null, null, null, null, null, false, null, 'command');
   reset role;
   perform pg_temp.act(v_mem);
   select count(*) into n from public.events where id = ev_cmd;

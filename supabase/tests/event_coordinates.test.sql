@@ -51,7 +51,7 @@ begin
 
   ------------------------------------------------------------------ Command saves a pin
   perform pg_temp.act(v_cmd);
-  ev := public.save_event(null, 'Fake Pinned Event', 'Op', now() + interval '10 days', null, 'Fake Field', null, null, 33.4484, -112.074, true, null);
+  ev := public.save_event(null, 'Fake Pinned Event', 'Op', now() + interval '10 days', null, 'Fake Field', null, null, 33.4484, -112.074, true, null, 'public');
   reset role;
   select * into r from public.event_details where event_id = ev;
   if r.latitude <> 33.4484 or r.longitude <> -112.074 or not r.hide_from_public_map then raise exception 'FAIL: pin not stored'; end if;
@@ -60,18 +60,18 @@ begin
 
   ------------------------------------------------------------------ validation
   perform pg_temp.act(v_cmd);
-  perform pg_temp.fails(format('select public.save_event(null, ''Fake'', ''Op'', now(), null, null, null, null, 33.4, null, false, null)'), 'invalid_coordinates');
-  perform pg_temp.fails(format('select public.save_event(null, ''Fake'', ''Op'', now(), null, null, null, null, null, -112, false, null)'), 'invalid_coordinates');
-  perform pg_temp.fails(format('select public.save_event(null, ''Fake'', ''Op'', now(), null, null, null, null, 95, 10, false, null)'), 'invalid_coordinates');
-  perform pg_temp.fails(format('select public.save_event(null, ''Fake'', ''Op'', now(), null, null, null, null, 10, 181, false, null)'), 'invalid_coordinates');
-  perform pg_temp.fails(format('select public.save_event(null, ''Fake'', ''Op'', now(), null, null, null, null, null, null, false, ''bogus'')'), 'invalid_status');
-  perform pg_temp.fails(format('select public.save_event(null, ''Fake'', ''Op'', now() + interval ''2 days'', null, null, null, null, null, null, false, ''completed'')'), 'completed_in_future');
+  perform pg_temp.fails(format('select public.save_event(null, ''Fake'', ''Op'', now(), null, null, null, null, 33.4, null, false, null, ''public'')'), 'invalid_coordinates');
+  perform pg_temp.fails(format('select public.save_event(null, ''Fake'', ''Op'', now(), null, null, null, null, null, -112, false, null, ''public'')'), 'invalid_coordinates');
+  perform pg_temp.fails(format('select public.save_event(null, ''Fake'', ''Op'', now(), null, null, null, null, 95, 10, false, null, ''public'')'), 'invalid_coordinates');
+  perform pg_temp.fails(format('select public.save_event(null, ''Fake'', ''Op'', now(), null, null, null, null, 10, 181, false, null, ''public'')'), 'invalid_coordinates');
+  perform pg_temp.fails(format('select public.save_event(null, ''Fake'', ''Op'', now(), null, null, null, null, null, null, false, ''bogus'', ''public'')'), 'invalid_status');
+  perform pg_temp.fails(format('select public.save_event(null, ''Fake'', ''Op'', now() + interval ''2 days'', null, null, null, null, null, null, false, ''completed'', ''public'')'), 'completed_in_future');
   reset role;
 
   ------------------------------------------------------------------ who may write
   perform pg_temp.act(v_mem);
-  perform pg_temp.fails(format('select public.save_event(null, ''Fake'', ''Op'', now() + interval ''1 day'', null, null, null, null, 33.4, -112, false, null)'));
-  perform pg_temp.fails(format('select public.save_event(%L, ''Fake hijack'', ''Op'', now() + interval ''1 day'', null, null, null, null, 1, 1, false, null)', ev), 'not allowed');
+  perform pg_temp.fails(format('select public.save_event(null, ''Fake'', ''Op'', now() + interval ''1 day'', null, null, null, null, 33.4, -112, false, null, ''public'')'));
+  perform pg_temp.fails(format('select public.save_event(%L, ''Fake hijack'', ''Op'', now() + interval ''1 day'', null, null, null, null, 1, 1, false, null, null)', ev), 'not allowed');
   reset role;
   select latitude into r from public.event_details where event_id = ev;
   if r.latitude <> 33.4484 then raise exception 'FAIL: a Member changed the pin'; end if;
@@ -94,23 +94,17 @@ begin
   if n <> 1 then raise exception 'FAIL: anon still sees the public columns (got %)', n; end if;
   reset role;
 
-  ------------------------------------------------------------------ the old eight-argument form leaves the pin alone
+  ------------------------------------------------------------------ saving with no pin removes it
+  -- (The eight-argument form that left the pin alone was dropped in MVA-303: every caller names an audience now.)
   perform pg_temp.act(v_cmd);
-  perform public.save_event(ev, 'Fake Pinned Event Renamed', 'Op', now() + interval '10 days', null, 'Fake Field 2', null, 'Fake notes');
-  reset role;
-  select * into r from public.event_details where event_id = ev;
-  if r.latitude <> 33.4484 or r.location_name <> 'Fake Field 2' then raise exception 'FAIL: old form should keep the pin and change the text'; end if;
-
-  -- The new form with no pin removes it.
-  perform pg_temp.act(v_cmd);
-  perform public.save_event(ev, 'Fake Pinned Event Renamed', 'Op', now() + interval '10 days', null, 'Fake Field 2', null, 'Fake notes', null, null, false, null);
+  perform public.save_event(ev, 'Fake Pinned Event Renamed', 'Op', now() + interval '10 days', null, 'Fake Field 2', null, 'Fake notes', null, null, false, null, null);
   reset role;
   select * into r from public.event_details where event_id = ev;
   if r.latitude is not null or r.longitude is not null or r.hide_from_public_map then raise exception 'FAIL: pin not removed'; end if;
 
   ------------------------------------------------------------------ backfill of a past mission
   perform pg_temp.act(v_cmd);
-  past := public.save_event(null, 'Fake 2015 Mission', 'Op', now() - interval '3650 days', null, 'Fake Old Field', null, null, 55.7558, 37.6173, false, 'completed');
+  past := public.save_event(null, 'Fake 2015 Mission', 'Op', now() - interval '3650 days', null, 'Fake Old Field', null, null, 55.7558, 37.6173, false, 'completed', 'public');
   reset role;
   select status into s from public.events where id = past;
   if s <> 'completed' then raise exception 'FAIL: backfilled event should be completed (got %)', s; end if;
@@ -122,9 +116,9 @@ begin
   reset role;
   -- A cancelled event keeps its status when edited through the new form.
   perform pg_temp.act(v_cmd);
-  fut := public.save_event(null, 'Fake Cancelled', 'Op', now() + interval '5 days', null, null, null, null, null, null, false, null);
+  fut := public.save_event(null, 'Fake Cancelled', 'Op', now() + interval '5 days', null, null, null, null, null, null, false, null, 'public');
   update public.events set status = 'cancelled' where id = fut;
-  perform public.save_event(fut, 'Fake Cancelled', 'Op', now() + interval '5 days', null, null, null, null, null, null, false, 'scheduled');
+  perform public.save_event(fut, 'Fake Cancelled', 'Op', now() + interval '5 days', null, null, null, null, null, null, false, 'scheduled', null);
   reset role;
   select status into s from public.events where id = fut;
   if s <> 'cancelled' then raise exception 'FAIL: cancelled stays cancelled (got %)', s; end if;

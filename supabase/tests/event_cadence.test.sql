@@ -187,7 +187,7 @@ begin
   select id into m_edit from public.events where source_event_id = ev and title = 'Fake Big Op: Briefing';
   perform pg_temp.act(v_cmd);
   perform public.save_event(m_edit, 'Fake Big Op: Briefing (moved)', 'Meeting', (select starts_at from public.events where id = m_edit) + interval '1 hour',
-                            (select ends_at from public.events where id = m_edit) + interval '1 hour', null, null, 'Hand-written');
+                            (select ends_at from public.events where id = m_edit) + interval '1 hour', null, null, 'Hand-written', null, null, false, null, null);
   reset role;
   select series_edited into s from public.events where id = m_edit;
   if s <> 'true' then raise exception 'FAIL: the hand edit is marked'; end if;
@@ -202,7 +202,7 @@ begin
   ------------------------------------------------------------------ the event moves: unedited meetings follow, edited ones are flagged
   select starts_at into r from public.events where source_event_id = ev and title = 'Fake Big Op: Logistics';
   perform pg_temp.act(v_cmd);
-  perform public.save_event(ev, 'Fake Big Op', 'Op', v_start + interval '3 days', v_start + interval '3 days 4 hours', null, null, null);
+  perform public.save_event(ev, 'Fake Big Op', 'Op', v_start + interval '3 days', v_start + interval '3 days 4 hours', null, null, null, null, null, false, null, null);
   reset role;
   select count(*) into n from public.events where source_event_id = ev and title = 'Fake Big Op: Logistics'
      and starts_at = r.starts_at + interval '3 days';
@@ -241,8 +241,8 @@ begin
   perform pg_temp.act(v_cmd);
   tpl2 := public.event_cadence_template_save(null, 'Fake Training prep', 'Training', true, null,
           '[{"title":"Plan","offset_days":3,"local_time":"19:00","duration_minutes":45,"audience":"old_guard","topics":"Plan it"}]'::jsonb);
-  ev_t := public.save_event(null, 'Fake Training Day', 'Training', v_start + interval '10 days', null, null, null, null);
-  ev_o := public.save_event(null, 'Fake Other Op', 'Op', v_start + interval '10 days', null, null, null, null);
+  ev_t := public.save_event(null, 'Fake Training Day', 'Training', v_start + interval '10 days', null, null, null, null, null, null, false, null, 'public');
+  ev_o := public.save_event(null, 'Fake Other Op', 'Op', v_start + interval '10 days', null, null, null, null, null, null, false, null, 'public');
   reset role;
   select count(*) into n from public.events where source_event_id = ev_t and title = 'Fake Training Day: Plan';
   if n <> 1 then raise exception 'FAIL: a new Training event gets the cadence by itself (got %)', n; end if;
@@ -250,7 +250,7 @@ begin
   if n <> 0 then raise exception 'FAIL: other event types are not touched (got %)', n; end if;
   perform pg_temp.act(v_cmd); perform public.event_cadence_template_retire(tpl2, true); reset role;
   perform pg_temp.act(v_cmd);
-  ev_late := public.save_event(null, 'Fake Later Training', 'Training', v_start + interval '12 days', null, null, null, null);
+  ev_late := public.save_event(null, 'Fake Later Training', 'Training', v_start + interval '12 days', null, null, null, null, null, null, false, null, 'public');
   perform pg_temp.fails(format('select * from public.event_cadence_apply(%L, %L)', ev_late, tpl2), 'template_retired');
   reset role;
   select count(*) into n from public.events where source_event_id = ev_late;
