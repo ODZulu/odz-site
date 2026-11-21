@@ -8,21 +8,25 @@
 --   * p_audience: 'public' (everyone, stored as null), 'members', 'old_guard' or 'command'.
 --     Creating an event with p_audience null is rejected (invalid_audience). Updating with null
 --     keeps the existing audience. Nothing about who can see a saved event changes.
---   * Both older save_event() overloads (8 and 12 arguments) are dropped: either one could still
---     create an event with no audience. Callers: the app (updated), opportunity_promote (below)
---     and the SQL tests (updated).
+--   * The 12-argument save_event() (Block 5, dev only) is dropped: it could still create an event
+--     with no audience, and nothing calls it after this change. Callers: the app (updated),
+--     opportunity_promote (below) and the SQL tests (updated).
+--   * The 8-argument save_event() is KEPT. It is the form the live prod app calls (created in
+--     20261011210000_event_details.sql), so dropping it would break event create and edit on
+--     prod from the moment this migration is applied until the release reaches main (D21,
+--     additive only). It can still create an event with no audience (public), exactly as prod
+--     does today; nothing new is exposed. MVA-304 drops it after the release is live.
 --   * event_set_audience() is dropped: nothing calls it any more.
 --   * authenticated gets column INSERT/UPDATE on events.audience so the invoker-security
 --     save_event() can write it; the write_events policies still decide who may write.
 --
--- NOT purely additive: two functions replaced by one with a new signature, one removed. Lord
--- reviews this diff. opportunity_promote is copied from 20261106140000_event_coordinates.sql
+-- Not purely additive: the 12-argument form is replaced by the 13-argument one and
+-- event_set_audience() is removed (both exist only on dev). Lord reviews this diff. opportunity_promote is copied from 20261106140000_event_coordinates.sql
 -- (newest definition); only its save_event() call changes.
 
 grant insert (audience) on public.events to authenticated;
 grant update (audience) on public.events to authenticated;
 
-drop function public.save_event(uuid, text, text, timestamptz, timestamptz, text, text, text);
 drop function public.save_event(uuid, text, text, timestamptz, timestamptz, text, text, text, numeric, numeric, boolean, text);
 drop function public.event_set_audience(uuid, text);
 

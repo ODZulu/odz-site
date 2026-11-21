@@ -45,13 +45,16 @@ begin
   update public.profiles set tier_id = t_cmd where id = v_cmd;
   update public.profiles set status = 'approved', tier_id = t_mem, setup_complete = true, callsign = 'Fake-Mem' where id = v_mem;
 
-  ------------------------------------------------------------------ the old forms are gone
+  ------------------------------------------------------------------ the dev-only forms are gone; the 8-argument form stays for prod
   if to_regprocedure('public.event_set_audience(uuid, text)') is not null then
     raise exception 'FAIL: event_set_audience should be removed';
   end if;
-  if to_regprocedure('public.save_event(uuid, text, text, timestamptz, timestamptz, text, text, text)') is not null
-     or to_regprocedure('public.save_event(uuid, text, text, timestamptz, timestamptz, text, text, text, numeric, numeric, boolean, text)') is not null then
-    raise exception 'FAIL: an older save_event form still exists and could create an event with no audience';
+  if to_regprocedure('public.save_event(uuid, text, text, timestamptz, timestamptz, text, text, text, numeric, numeric, boolean, text)') is not null then
+    raise exception 'FAIL: the 12-argument save_event should be removed';
+  end if;
+  -- The live prod app calls the 8-argument form until the release reaches main (dropped later in MVA-304).
+  if to_regprocedure('public.save_event(uuid, text, text, timestamptz, timestamptz, text, text, text)') is null then
+    raise exception 'FAIL: the 8-argument save_event must stay until the release is live';
   end if;
 
   ------------------------------------------------------------------ a Command-only event is restricted from its first moment
@@ -114,6 +117,19 @@ begin
   reset role;
   select audience into a from public.events where id = ev;
   if a is not null then raise exception 'FAIL: public did not clear the audience (got %)', a; end if;
+
+  ------------------------------------------------------------------ the 8-argument form still behaves as prod expects
+  perform pg_temp.act(v_cmd);
+  ev_pub := public.save_event(null, 'Fake Prod Form Event', 'Other', now() + interval '4 days', null, 'Fake Spot', null, null);
+  reset role;
+  select audience into a from public.events where id = ev_pub;
+  if a is not null then raise exception 'FAIL: 8-argument create should be public, as in prod (got %)', a; end if;
+  perform pg_temp.act(v_cmd);
+  perform public.save_event(ev_pub, 'Fake Prod Form Event Two', 'Other', now() + interval '4 days', null, 'Fake Spot', null, null);
+  reset role;
+  if not exists (select 1 from public.events where id = ev_pub and title = 'Fake Prod Form Event Two') then
+    raise exception 'FAIL: 8-argument update did not apply';
+  end if;
 
   ------------------------------------------------------------------ who may save is unchanged
   perform pg_temp.act(v_mem);

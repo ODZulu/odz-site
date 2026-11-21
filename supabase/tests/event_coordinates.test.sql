@@ -94,8 +94,15 @@ begin
   if n <> 1 then raise exception 'FAIL: anon still sees the public columns (got %)', n; end if;
   reset role;
 
+  ------------------------------------------------------------------ the old eight-argument form leaves the pin alone
+  -- (Kept for the live prod app until the release is live; dropped in MVA-304.)
+  perform pg_temp.act(v_cmd);
+  perform public.save_event(ev, 'Fake Pinned Event Renamed', 'Op', now() + interval '10 days', null, 'Fake Field 2', null, 'Fake notes');
+  reset role;
+  select * into r from public.event_details where event_id = ev;
+  if r.latitude <> 33.4484 or r.location_name <> 'Fake Field 2' then raise exception 'FAIL: old form should keep the pin and change the text'; end if;
+
   ------------------------------------------------------------------ saving with no pin removes it
-  -- (The eight-argument form that left the pin alone was dropped in MVA-303: every caller names an audience now.)
   perform pg_temp.act(v_cmd);
   perform public.save_event(ev, 'Fake Pinned Event Renamed', 'Op', now() + interval '10 days', null, 'Fake Field 2', null, 'Fake notes', null, null, false, null, null);
   reset role;
