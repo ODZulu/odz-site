@@ -1,7 +1,7 @@
 /* ODZ - HQ theme component styles (MVA-297 PR A: tokens, type, base styles; was Field Standard). Load after tokens.css. Every value comes from a token.
    MVA-139 changes from the handoff copy: Google Fonts @import removed (fonts are self-hosted via
    @fontsource, see index.css); px converted to rem (px/16); 44px (2.75rem) touch targets;
-   global focus ring; mobile layout (bottom tab bar, stacked table cards) below 720px.
+   global focus ring; mobile layout (bottom tab bar, stacked table cards) at 760px and below (MVA-297 PR B).
    MVA-297 PR A: HQ palette, radii 7 to 12px, soft panel gradient, 12px label floor and 14px body floor. */
 :root {
   --f-display: var(--font-field-display, "Saira Stencil One", sans-serif);
@@ -38,9 +38,24 @@
 .odz-bar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .625rem 1.5rem; background: var(--deep); border-bottom: 1px solid var(--line); }
 .odz-brand { display: flex; align-items: center; gap: .625rem; font-family: var(--f-head); font-weight: 700; font-size: .9375rem; letter-spacing: .14em; color: var(--primary); text-decoration: none; }
 .odz-brand img { width: 1.875rem; height: 1.875rem; }
-.odz-nav { display: flex; background: var(--deep); border-bottom: 1px solid var(--line); padding: 0 .75rem; }
-.odz-nav a { display: flex; align-items: center; min-height: var(--touch); padding: 0 1rem; font-family: var(--f-label); font-weight: var(--label-w); font-size: .8125rem; letter-spacing: var(--label-ls); color: var(--ink-muted); text-decoration: none; }
-.odz-nav a[aria-current] { color: var(--primary); box-shadow: inset 0 -3px 0 var(--primary); }
+/* app shell (MVA-297 PR B): desktop sidebar + top bar; the sidebar's nav becomes the bottom tab bar at 760px and below */
+.odz-shell { --side-w: 15rem; }
+.odz-side { position: fixed; inset: 0 auto 0 0; z-index: 10; width: var(--side-w); display: flex; flex-direction: column; gap: 1rem; padding: 1rem .75rem; background: var(--deep); border-right: 1px solid var(--line); overflow-y: auto; }
+.odz-side__brand { padding: .25rem .5rem .5rem; }
+.odz-shell__main { margin-left: var(--side-w); min-width: 0; }
+.odz-side__user { margin-top: auto; display: flex; flex-direction: column; align-items: flex-start; gap: .625rem; padding: .875rem; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-3); }
+.odz-nav { display: flex; flex-direction: column; gap: .25rem; }
+.odz-nav a { display: flex; align-items: center; gap: .75rem; min-height: var(--touch); padding: 0 .75rem; border-radius: var(--radius-2); font-family: var(--f-label); font-weight: var(--label-w); font-size: .8125rem; letter-spacing: var(--label-ls); color: var(--ink-muted); text-decoration: none; }
+.odz-nav a:hover { background: var(--surface-hover); color: var(--ink); }
+.odz-nav a[aria-current] { background: var(--surface-raised); color: var(--primary); box-shadow: inset 3px 0 0 var(--primary); }
+.odz-nav__icon { order: -1; flex: none; }
+.odz-bar--desk { justify-content: space-between; }
+.odz-crumbs ol { display: flex; align-items: center; gap: .5rem; margin: 0; padding: 0; list-style: none; font-family: var(--f-label); font-weight: var(--label-w); font-size: .8125rem; letter-spacing: var(--label-ls); text-transform: uppercase; color: var(--ink-muted); }
+.odz-crumbs li { display: flex; align-items: center; gap: .5rem; }
+.odz-crumbs li[aria-current] { color: var(--ink); }
+.odz-iconbtn { position: relative; display: inline-flex; align-items: center; justify-content: center; width: var(--touch); height: var(--touch); border: 1px solid var(--line-strong); border-radius: var(--radius-2); color: var(--ink); text-decoration: none; background: transparent; }
+.odz-iconbtn:hover { background: var(--surface-hover); }
+.odz-badge { position: absolute; top: -.375rem; right: -.375rem; min-width: 1.25rem; height: 1.25rem; padding: 0 .25rem; display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; background: var(--alert-fill); color: var(--on-primary); font-family: var(--f-label); font-weight: 700; font-size: .75rem; line-height: 1; }
 .odz-page { padding: 1.5rem; }
 
 /* panels */
@@ -140,11 +155,11 @@
 .odz-desktop-only { display: initial; }
 .odz-mobile-only { display: none; }
 
-/* mobile: below 720px (45rem). Grids collapse to one column in reading order. */
+/* mobile: 760px and below (47.5rem). Grids collapse to one column in reading order. */
 .odz-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 1.5rem; }
 .odz-col { display: flex; flex-direction: column; gap: 1.5rem; }
 
-@media (max-width: 45rem) {
+@media (max-width: 47.5rem) {
   .odz-desktop-only { display: none; }
   .odz-mobile-only { display: initial; }
   .odz-hero { font-size: 4.5rem; }
@@ -155,11 +170,12 @@
   .odz-bar { padding: .5rem 1rem; }
   .odz-page { padding: 1rem 1rem calc(var(--tabbar-h) + 1.5rem + env(safe-area-inset-bottom)); }
 
-  /* nav becomes a fixed bottom tab bar */
-  .odz-nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; justify-content: stretch; padding: 0 0 env(safe-area-inset-bottom); border-top: 1px solid var(--line); border-bottom: 0; }
-  .odz-nav a { flex: 1 1 0; justify-content: center; min-height: var(--tabbar-h); padding: 0 .125rem; font-size: .75rem; letter-spacing: .06em; }
-  .odz-nav { overflow-x: auto; }
-  .odz-nav a[aria-current] { box-shadow: inset 0 3px 0 var(--primary); }
+  /* the sidebar goes away; its nav becomes a fixed bottom tab bar (icon over label, scrolls sideways when there are many) */
+  .odz-shell__main { margin-left: 0; }
+  .odz-side { display: contents; }
+  .odz-nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; flex-direction: row; gap: 0; background: var(--deep); padding: 0 0 env(safe-area-inset-bottom); border-top: 1px solid var(--line); overflow-x: auto; }
+  .odz-nav a { flex: 1 0 4.5rem; flex-direction: column; justify-content: center; gap: .125rem; min-height: var(--tabbar-h); padding: 0 .25rem; border-radius: 0; font-size: .75rem; letter-spacing: .06em; }
+  .odz-nav a[aria-current] { background: none; box-shadow: inset 0 3px 0 var(--primary); }
 
   /* forms: full-width controls */
   .odz-btn--block-mobile { width: 100%; }
@@ -226,7 +242,8 @@
 
 /* print: documents and minutes print as plain pages */
 @media print {
-  .odz-bar, .odz-nav, .odz-noprint, .odz-subnav { display: none !important; }
+  .odz-bar, .odz-side, .odz-nav, .odz-noprint, .odz-subnav { display: none !important; }
+  .odz-shell__main { margin-left: 0 !important; }
   body, .odz { background: white !important; color: black !important; }
   .odz-page { padding: 0 !important; }
   .odz-panel { background: white !important; border: 0 !important; }
