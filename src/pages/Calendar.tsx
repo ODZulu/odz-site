@@ -23,6 +23,8 @@ import {
   type PublicEvent,
 } from '../lib/events'
 import { EventMapToggle } from '../components/EventMapToggle'
+import { ProspectCard } from '../components/ProspectCard'
+import { groupScheduleByDay, loadProspects, mergeSchedule } from '../lib/prospects'
 import { PinFields } from '../components/PinFields'
 import { ApplyCadence, CadencePanel } from '../components/CadencePanel'
 import { SeriesPanel } from '../components/SeriesPanel'
@@ -66,12 +68,17 @@ export default function Calendar() {
   const events = useLoad<AnyEvent[]>(() => (detail ? listEvents() : listPublicEvents()), [detail])
   // Events that use registration show it instead of RSVP and readiness (one "going" state per event, MVA-231).
   const registration = useLoad(async () => (detail ? await listRegistrationEventIds() : new Set<string>()), [detail])
+  // Prospects (MVA-260): open opportunities, for members who can read them. Never events, never RSVP.
+  const seeProspects = can('read_opportunities')
+  const prospects = useLoad(() => (seeProspects ? loadProspects(new Date()) : Promise.resolve([])), [seeProspects])
   const [editing, setEditing] = useState<{ id: string | null; form: EventForm; seriesId?: string | null } | null>(null)
   const [errors, setErrors] = useState<EventErrors>({})
   const [failure, setFailure] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
-  const { upcoming, past } = splitUpcoming(events.data ?? [], new Date())
+  const now = new Date()
+  const { upcoming, past } = splitUpcoming(events.data ?? [], now)
+  const schedule = groupScheduleByDay(mergeSchedule(upcoming, prospects.data ?? [], now))
 
   async function save(e: FormEvent) {
     e.preventDefault()
@@ -305,15 +312,15 @@ export default function Calendar() {
         </p>
       ) : events.failed ? (
         <p role="alert">Could not load the calendar.</p>
-      ) : upcoming.length === 0 && past.length === 0 ? (
+      ) : upcoming.length === 0 && past.length === 0 && schedule.length === 0 ? (
         <p className="odz-muted">No events yet.</p>
       ) : (
         <div className="odz-agenda">
-          {upcoming.length === 0 && <p className="odz-muted">Nothing upcoming.</p>}
-          {groupByDay(upcoming).map((g) => (
-            <section key={g.key} aria-label={g.label}>
-              <h2 className="odz-day">{g.label}</h2>
-              {g.events.map(renderEvent)}
+          {schedule.length === 0 && <p className="odz-muted">Nothing upcoming.</p>}
+          {schedule.map((g) => (
+            <section key={g.key} aria-label={formatDateLine(`${g.key}T12:00:00-07:00`)}>
+              <h2 className="odz-day">{formatDateLine(`${g.key}T12:00:00-07:00`)}</h2>
+              {g.items.map((i) => (i.kind === 'event' ? renderEvent(i.event) : <ProspectCard key={`p-${i.prospect.id}`} prospect={i.prospect} />))}
             </section>
           ))}
           {past.length > 0 && (
