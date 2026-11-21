@@ -166,7 +166,7 @@ test('MVA-260: an open opportunity shows as a Prospect in the calendar and HQ, n
   await expect(mp.getByText(keepTitle, { exact: true })).toBeVisible()
   await expect(mp.getByText('PROSPECT', { exact: true }).first()).toBeVisible()
   await expect(mp.locator('section.odz-panel').filter({ has: mp.getByRole('heading', { name: 'Next event' }) }).getByText(keepTitle)).toHaveCount(0)
-  await expect(mp.locator('section.odz-panel').filter({ has: mp.getByRole('heading', { name: 'Schedule' }) }).getByText('PROSPECT', { exact: true })).toBeVisible()
+  await expect(mp.locator('section.odz-panel').filter({ has: mp.getByRole('heading', { name: 'Schedule' }) }).getByText('PROSPECT', { exact: true }).first()).toBeVisible()
 
   // Tapping it opens the opportunity, where interest is answered.
   await mp.goto('/calendar')
