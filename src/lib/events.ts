@@ -107,7 +107,7 @@ function pinArgs(f: EventForm) {
   }
 }
 
-/** The arguments of the save_event() RPC: the event and its details, saved together. */
+/** The arguments of the save_event() RPC: the event, its details and its audience, saved together. */
 export function toSaveArgs(id: string | null, f: EventForm) {
   return {
     p_id: id,
@@ -119,6 +119,8 @@ export function toSaveArgs(id: string | null, f: EventForm) {
     p_location_detail: f.location_detail.trim() || null,
     p_description: f.description.trim() || null,
     ...pinArgs(f),
+    // Sent with the event so it is never saved without one. '' (the form's "everyone") is 'public'.
+    p_audience: f.audience || 'public',
   }
 }
 
@@ -189,15 +191,10 @@ export async function listEvents(): Promise<EventDetails[]> {
   return flattenDetails(data as unknown as EventWithDetails[])
 }
 
+/** One call: the event, its details and its audience are saved together or not at all (MVA-303). */
 export async function createEvent(form: EventForm): Promise<void> {
   if (!supabase) throw new Error('events')
-  const { data, error } = await supabase.rpc('save_event', toSaveArgs(null, form))
-  if (error) throw new Error('events')
-  if (form.audience) await setAudience(data as string, form.audience)
-}
-
-async function setAudience(id: string, audience: EventAudience): Promise<void> {
-  const { error } = await supabase!.rpc('event_set_audience', { p_event: id, p_audience: audience || null })
+  const { error } = await supabase.rpc('save_event', toSaveArgs(null, form))
   if (error) throw new Error('events')
 }
 
@@ -205,7 +202,6 @@ export async function updateEvent(id: string, form: EventForm): Promise<void> {
   if (!supabase) throw new Error('events')
   const { error } = await supabase.rpc('save_event', toSaveArgs(id, form))
   if (error) throw new Error('events')
-  await setAudience(id, form.audience)
 }
 
 export async function setEventStatus(id: string, status: EventStatus): Promise<void> {
