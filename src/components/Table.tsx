@@ -15,7 +15,7 @@ type TableProps<T> = {
   selectedKey?: string
 }
 
-/** Table on desktop; stacked cards below 720px (see odz.css). */
+/** Table on desktop; stacked cards at 760px and below (see odz.css). */
 export function Table<T>({ columns, rows, rowKey, selectedKey }: TableProps<T>) {
   return (
     <table className="odz-table">

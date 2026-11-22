@@ -22,6 +22,11 @@ describe('AppNav', () => {
     expect(html).not.toContain('DESIGNATIONS')
   })
 
+  it('draws an icon on every tab and hides it from assistive tech', () => {
+    expect((html.match(/<svg/g) ?? []).length).toBe(3)
+    expect((html.match(/<svg[^>]*aria-hidden="true"/g) ?? []).length).toBe(3)
+  })
+
   it('marks the active tab with aria-current', () => {
     expect(html).toMatch(/aria-current="page"[^>]*>HQ</)
   })
