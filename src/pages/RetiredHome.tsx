@@ -1,5 +1,5 @@
 import { useAuth } from '../auth/AuthProvider'
-import { ButtonLink, Chip, KeyValue, Panel } from '../components'
+import { ButtonLink, Chip, KeyValue, Panel, Sep } from '../components'
 import { loadTraffic, authorLabel } from '../lib/hq'
 import type { ServiceEntry } from '../lib/service'
 import { supabase } from '../lib/supabase'
@@ -55,7 +55,11 @@ export default function RetiredHome() {
           ) : (
             (traffic.data?.posts ?? []).map((p) => (
               <article key={p.id} className="odz-post">
-                <span className="odz-label">{`${authorLabel(p.author)} · ${formatStampPhoenix(p.created_at)}`}</span>
+                <span className="odz-label">
+                      {authorLabel(p.author)}
+                      <Sep />
+                      {formatStampPhoenix(p.created_at)}
+                    </span>
                 <h3 className="odz-post__title">{p.title}</h3>
                 <p style={{ whiteSpace: 'pre-wrap' }}>{p.body}</p>
               </article>

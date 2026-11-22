@@ -1,6 +1,6 @@
 import { Link } from 'react-router'
 import { useAuth } from '../auth/AuthProvider'
-import { ButtonLink, Chip, KeyValue, Panel } from '../components'
+import { ButtonLink, Chip, KeyValue, Panel, Sep } from '../components'
 import { ReadinessMeter } from '../components/ReadinessMeter'
 import { loadProspects, mergeSchedule, prospectHref } from '../lib/prospects'
 import { listEvents, listPublicEvents, splitUpcoming, type EventDetails, type PublicEvent } from '../lib/events'
@@ -82,7 +82,11 @@ export default function Hq() {
                 <article key={p.id} className="odz-post">
                   <div className="odz-row">
                     {p.pinned && <Chip variant="accent">PINNED</Chip>}
-                    <span className="odz-label">{`${authorLabel(p.author)} · ${formatStampPhoenix(p.created_at)}`}</span>
+                    <span className="odz-label">
+                      {authorLabel(p.author)}
+                      <Sep />
+                      {formatStampPhoenix(p.created_at)}
+                    </span>
                   </div>
                   <h3 className="odz-post__title">{p.title}</h3>
                   <p style={{ whiteSpace: 'pre-wrap' }}>{p.body}</p>
@@ -110,7 +114,15 @@ export default function Hq() {
                     </div>
                     <div className="odz-sched__body">
                       <p className="odz-heading">{i.event.title}</p>
-                      <p className="odz-label">{`${formatTimeL(i.event.starts_at)}${detail && i.event.location_name ? ` · ${i.event.location_name}` : ''}`}</p>
+                      <p className="odz-label">
+                        {formatTimeL(i.event.starts_at)}
+                        {detail && i.event.location_name && (
+                          <>
+                            <Sep />
+                            {i.event.location_name}
+                          </>
+                        )}
+                      </p>
                     </div>
                     <Chip variant="plain">{i.event.event_type.toUpperCase()}</Chip>
                   </div>

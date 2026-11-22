@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
 import { useAuth } from '../auth/AuthProvider'
-import { DesignationBadges, Field, Panel, Select, SeatCounters, Table, TierMark } from '../components'
+import { Avatar, DesignationBadges, Field, Panel, Select, SeatCounters, Table, TierMark } from '../components'
 import { designationNamesFor, filterByDesignation, type Designation, type MemberDesignation } from '../lib/designations'
 import { filterRoster, sortRoster, type RosterMember } from '../lib/roster'
 import type { SeatCounts } from '../lib/seats'
@@ -118,7 +118,12 @@ export default function Roster() {
               {
                 header: 'Callsign',
                 kind: 'cs',
-                render: (r) => <Link to={`/roster/${encodeURIComponent(r.callsign)}`}>{r.callsign}</Link>,
+                render: (r) => (
+                  <Link to={`/roster/${encodeURIComponent(r.callsign)}`} className="odz-person">
+                    <Avatar name={r.callsign} />
+                    {r.callsign}
+                  </Link>
+                ),
               },
               { header: 'Tier', render: (r) => (r.tier ? <TierMark tier={r.tier.name} /> : '-') },
               { header: 'Designations', render: (r) => <DesignationBadges names={designationNamesFor(r.id, assignments, catalog)} /> },
@@ -154,7 +159,12 @@ export default function Roster() {
               {
                 header: 'Callsign',
                 kind: 'cs',
-                render: (r) => <Link to={`/roster/${encodeURIComponent(r.callsign)}`}>{r.callsign}</Link>,
+                render: (r) => (
+                  <Link to={`/roster/${encodeURIComponent(r.callsign)}`} className="odz-person">
+                    <Avatar name={r.callsign} />
+                    {r.callsign}
+                  </Link>
+                ),
               },
               { header: 'Was', render: (r) => (r.tier ? <TierMark tier={r.tier.name} /> : '-') },
             ]}
