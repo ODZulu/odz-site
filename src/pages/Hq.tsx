@@ -3,9 +3,9 @@ import { useAuth } from '../auth/AuthProvider'
 import { ButtonLink, Chip, KeyValue, Panel, Sep } from '../components'
 import { ReadinessMeter } from '../components/ReadinessMeter'
 import { loadProspects, mergeSchedule, prospectHref } from '../lib/prospects'
-import { listEvents, listPublicEvents, splitUpcoming, type EventDetails, type PublicEvent } from '../lib/events'
+import { EVENT_TYPE_LABEL, listEvents, listPublicEvents, splitUpcoming, type EventDetails, type PublicEvent } from '../lib/events'
 import { authorLabel, breakdownBars, loadReadiness, loadTierBreakdown, loadTraffic } from '../lib/hq'
-import { formatDateLine, formatStampPhoenix, formatTimeL } from '../lib/time'
+import { formatDateLine, formatStampPhoenix, formatWhen } from '../lib/time'
 import { useLoad } from '../lib/useLoad'
 
 type AnyEvent = PublicEvent & Partial<EventDetails>
@@ -37,7 +37,7 @@ export default function Hq() {
       </h1>
       <div className="odz-grid">
         <div className="odz-col">
-          <Panel title="Next event" action={next ? <Chip variant="plain">{next.event_type.toUpperCase()}</Chip> : undefined}>
+          <Panel title="Next event" action={next ? <Chip variant="plain">{EVENT_TYPE_LABEL[next.event_type]}</Chip> : undefined}>
             {events.loading ? (
               <p className="odz-muted" role="status">
                 Loading
@@ -46,20 +46,20 @@ export default function Hq() {
               <p className="odz-muted">Nothing scheduled.</p>
             ) : (
               <>
-                <Link to="/calendar" className="odz-title" style={{ textDecoration: 'none' }}>
+                <Link to={`/events/${next.id}`} className="odz-title" style={{ textDecoration: 'none' }}>
                   {next.title}
                 </Link>
                 <div style={{ marginTop: '0.75rem' }}>
                   <KeyValue
                     items={[
-                      ['When', `${formatDateLine(next.starts_at)} · ${formatTimeL(next.starts_at)}`],
+                      ['When', formatWhen(next.starts_at, next.ends_at)],
                       ...(detail && next.location_name ? ([['Where', next.location_name]] as Array<[string, string]>) : []),
                     ]}
                   />
                 </div>
                 {readiness.data && (
                   <div style={{ marginTop: '1rem' }}>
-                    <Link to="/calendar" aria-label="Open the event to answer">
+                    <Link to={`/events/${next.id}`} aria-label="Open the event to answer">
                       <ReadinessMeter readiness={readiness.data} />
                     </Link>
                   </div>
@@ -107,25 +107,17 @@ export default function Hq() {
             ) : (
               schedule.slice(0, 5).map((i) =>
                 i.kind === 'event' ? (
-                  <div className="odz-sched" key={i.event.id}>
+                  <Link to={`/events/${i.event.id}`} className="odz-sched odz-sched--link" key={i.event.id}>
                     <div className="odz-date">
                       <b>{dayOf(i.event.starts_at)}</b>
                       <span className="odz-label">{monthOf(i.event.starts_at)}</span>
                     </div>
                     <div className="odz-sched__body">
                       <p className="odz-heading">{i.event.title}</p>
-                      <p className="odz-label">
-                        {formatTimeL(i.event.starts_at)}
-                        {detail && i.event.location_name && (
-                          <>
-                            <Sep />
-                            {i.event.location_name}
-                          </>
-                        )}
-                      </p>
+                      <p className="odz-label">{formatWhen(i.event.starts_at, null)}</p>
                     </div>
-                    <Chip variant="plain">{i.event.event_type.toUpperCase()}</Chip>
-                  </div>
+                    <Chip variant="plain">{EVENT_TYPE_LABEL[i.event.event_type]}</Chip>
+                  </Link>
                 ) : (
                   <div className="odz-sched odz-sched--prospect" key={`p-${i.prospect.id}`}>
                     <div className="odz-date">

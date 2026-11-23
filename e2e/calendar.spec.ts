@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { cleanup, createEventRow, hasBackend, resetInviteAttempts, seedUser, type SeededUser } from './helpers/backend'
+import { eventCard, eventPage, openEvent } from './helpers/events'
 
 test.skip(!hasBackend, 'needs a local Supabase stack (see docs/TESTING.md)')
 
@@ -51,34 +52,35 @@ test('a Recruit sees the listing but not the details', async ({ page }) => {
   await expect(page.getByText('Details', { exact: true })).toHaveCount(0)
 })
 
-test('a Member sees location, directions and description', async ({ page }) => {
+test('a Member sees location, directions and description on the event page, not on the card', async ({ page }) => {
   const ev = await createEventRow({ location: SECRET_LOCATION, detail: SECRET_DETAIL, description: '**' + SECRET_DESCRIPTION + '**' })
   await signIn(page, await seedUser('member', 'cal-mem'))
   await page.goto('/calendar')
   await expect(page.getByText(ev.title)).toBeVisible()
-  // Scope to this test's own event: earlier tests leave events with the same texts on the shared stack.
-  const card = page.locator('article', { hasText: ev.title })
-  await expect(card.getByText(SECRET_LOCATION)).toBeVisible()
-  await card.getByText('Details', { exact: true }).click()
-  await expect(card.getByText(SECRET_DETAIL)).toBeVisible()
-  await expect(card.getByText(SECRET_DESCRIPTION)).toBeVisible()
-  await expect(page.getByRole('button', { name: 'New event' })).toHaveCount(0)
+  // MVA-301: the card shows only what is needed to find the event.
+  await expect(eventCard(page, ev.title)).toBeVisible()
+  await expect(page.locator('body')).not.toContainText(SECRET_LOCATION)
+  await expect(page.getByRole('link', { name: 'New event' })).toHaveCount(0)
+  const content = await openEvent(page, ev.title)
+  await expect(content.getByText(SECRET_LOCATION)).toBeVisible()
+  await expect(content.getByText(SECRET_DETAIL)).toBeVisible()
+  await expect(content.getByText(SECRET_DESCRIPTION)).toBeVisible()
 })
 
 test('a script in an event description renders inert', async ({ page }) => {
   const ev = await createEventRow({ detail: 'x', description: '<script>window.__pwned = 1</script>hello' })
   await signIn(page, await seedUser('member', 'cal-xss'))
-  await page.goto('/calendar')
-  const card = page.locator('article', { hasText: ev.title })
-  await card.getByText('Details', { exact: true }).click()
-  await expect(card.locator('.odz-md')).toContainText('<script>')
+  const content = await openEvent(page, ev.title)
+  await expect(content.locator('.odz-md')).toContainText('<script>')
   expect(await page.evaluate(() => (window as unknown as { __pwned?: number }).__pwned)).toBeUndefined()
 })
 
 test('Command creates, edits and cancels an event', async ({ page }) => {
   await signIn(page, await seedUser('command', 'cal-cmd'))
   await page.goto('/calendar')
-  await page.getByRole('button', { name: 'New event' }).click()
+  await page.getByRole('link', { name: 'New event' }).click()
+  await expect(page).toHaveURL(/\/events\/new$/)
+  await expect(page.getByRole('heading', { level: 1, name: 'New event' })).toBeVisible()
 
   // Validation: the end must be after the start.
   await page.getByLabel('Title').fill('E2E Range Day')
@@ -90,11 +92,37 @@ test('Command creates, edits and cancels an event', async ({ page }) => {
   await page.getByLabel('Ends (optional)').fill('2030-01-15T10:00')
   await page.getByLabel('Location name').fill('E2E Fake Range')
   await page.getByRole('button', { name: 'Save event' }).click()
-  await expect(page.getByText('E2E Range Day')).toBeVisible()
-  await expect(page.getByText('0630L-1000L')).toBeVisible()
+  // Save goes to the new event's page.
+  await expect(page.getByRole('heading', { level: 1, name: 'E2E Range Day' })).toBeVisible()
+  await expect(eventPage(page).getByText(/0630L to 1000L/).first()).toBeVisible()
 
-  const card = page.locator('article', { hasText: 'E2E Range Day' })
-  await card.getByRole('button', { name: 'Cancel event' }).click()
-  await card.getByRole('button', { name: 'Confirm cancel' }).click()
-  await expect(card.getByText('CANCELLED')).toBeVisible()
+  await page.getByRole('button', { name: 'Cancel event' }).click()
+  await page.getByRole('button', { name: 'Confirm cancel' }).click()
+  await expect(eventPage(page).getByText('CANCELLED', { exact: true })).toBeVisible()
+})
+
+test('a Member cannot open the new-event page', async ({ page }) => {
+  await signIn(page, await seedUser('member', 'cal-nonew'))
+  await page.goto('/events/new')
+  await expect(page).toHaveURL(/\/calendar$/)
+})
+
+test('an event card is one link with only the allowed fields', async ({ page }) => {
+  const ev = await createEventRow({ location: SECRET_LOCATION, detail: SECRET_DETAIL, description: SECRET_DESCRIPTION })
+  await signIn(page, await seedUser('member', 'cal-card'))
+  await page.goto('/calendar')
+  const card = eventCard(page, ev.title)
+  await expect(card).toHaveAttribute('href', `/events/${ev.id}`)
+  await expect(card.getByRole('button')).toHaveCount(0)
+  await expect(card).toContainText('Training') // the type in words
+  const box = await card.boundingBox()
+  expect(box!.height).toBeGreaterThanOrEqual(44)
+  // Keyboard: Enter on the focused card opens the page.
+  await card.focus()
+  await page.keyboard.press('Enter')
+  await expect(page).toHaveURL(new RegExp(`/events/${ev.id}$`))
+  // Back returns to the list.
+  await page.goBack()
+  await expect(page).toHaveURL(/\/calendar$/)
+  await expect(eventCard(page, ev.title)).toBeVisible()
 })

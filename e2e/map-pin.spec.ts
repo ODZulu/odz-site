@@ -39,7 +39,7 @@ test('tap the map to drop a pin, tap elsewhere to move it, drag it, remove it', 
   const page = await commandPage(browser, cmd)
   test.skip(!(await hasWebGL(page)), 'this browser has no WebGL')
   await page.goto('/calendar')
-  await page.getByRole('button', { name: 'New event' }).click()
+  await page.getByRole('link', { name: 'New event' }).click()
   const map = page.getByRole('application', { name: /Map\. Tap to drop the event pin/ })
   await expect(map).toBeVisible()
   await expect(map.locator('canvas')).toBeVisible()
@@ -79,26 +79,26 @@ test('tap the map to drop a pin, tap elsewhere to move it, drag it, remove it', 
   await expect(page.getByLabel('Event pin', { exact: true })).toHaveCount(0)
 })
 
-test('a saved pin shows a small map preview on the event card, loaded only when opened', async ({ browser }) => {
+test('a saved pin shows a small map preview on the event page', async ({ browser }) => {
   const cmd = await seedUser('command', 'map-prev')
   const title = 'E2E Map Preview Event'
   const page = await commandPage(browser, cmd)
   test.skip(!(await hasWebGL(page)), 'this browser has no WebGL')
   await page.goto('/calendar')
-  await page.getByRole('button', { name: 'New event' }).click()
+  await page.getByRole('link', { name: 'New event' }).click()
   await page.getByLabel('Title', { exact: true }).fill(title)
   await page.getByLabel('Starts (Phoenix time)').fill('2030-06-01T09:00')
   await page.getByLabel('Latitude').fill('33.45')
   await page.getByLabel('Longitude').fill('-112.07')
   await page.getByRole('button', { name: 'Save event' }).click()
 
-  const card = page.locator('article.odz-event').filter({ has: page.getByRole('heading', { name: title, exact: true }) })
-  await expect(card.getByText('Pin 33.45, -112.07')).toBeVisible()
-  await expect(card.locator('canvas')).toHaveCount(0) // not started until opened
-  await card.getByText('Map', { exact: true }).click()
-  const preview = card.getByRole('img', { name: 'Map showing the event location' })
+  // MVA-301: the preview is on the event page itself, under "When and where".
+  await expect(page.getByRole('heading', { level: 1, name: title, exact: true })).toBeVisible()
+  const where = page.locator('section').filter({ has: page.getByRole('heading', { name: 'When and where' }) })
+  await expect(where.getByText('Coordinates 33.45, -112.07')).toBeVisible()
+  const preview = where.getByRole('img', { name: 'Map showing the event location' })
   await expect(preview.locator('canvas')).toBeVisible()
-  await expect(card.getByLabel('Event pin', { exact: true })).toBeVisible()
+  await expect(where.getByLabel('Event pin', { exact: true })).toBeVisible()
 })
 
 // MVA-258: a blocked or offline tile host must never leave a silent white box. Tier 2 cannot see
@@ -108,7 +108,7 @@ test('a map that cannot load says so, and the latitude and longitude fields stil
   const page = await commandPage(browser, cmd, true)
   test.skip(!(await hasWebGL(page)), 'this browser has no WebGL')
   await page.goto('/calendar')
-  await page.getByRole('button', { name: 'New event' }).click()
+  await page.getByRole('link', { name: 'New event' }).click()
   await expect(page.getByRole('status').filter({ hasText: /The map could not load/ })).toBeVisible()
   await page.getByLabel('Latitude').fill('33.45')
   await page.getByLabel('Longitude').fill('-112.07')

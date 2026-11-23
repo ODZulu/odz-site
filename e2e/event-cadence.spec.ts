@@ -1,5 +1,6 @@
 import { expect, test, type Browser, type Page } from '@playwright/test'
 import { admin, asUser, cleanup, createEventRow, hasBackend, resetInviteAttempts, seedUser } from './helpers/backend'
+import { eventPage, openEventFromList } from './helpers/events'
 import { moveEventLater, phoenixDay, phoenixInstant } from './helpers/dates'
 
 test.skip(!hasBackend, 'needs a local Supabase stack (see docs/TESTING.md)')
@@ -22,9 +23,8 @@ async function signInPage(browser: Browser, u: { email: string; password: string
   return page
 }
 
-// Match the card by its exact heading: a prep meeting's title contains its event's title.
-const article = (page: Page, title: string) =>
-  page.locator('article.odz-event').filter({ has: page.getByRole('heading', { name: title, exact: true }) })
+// MVA-301: an event's actions and sections are on its page, reached from the list.
+const article = (page: Page, _title: string) => eventPage(page)
 
 test('Command builds a prep cadence, applies it (past steps are skipped and named), moves the event, then cancels it', async ({ browser }) => {
   const cmd = await seedUser('command', 'cad-cmd')
@@ -49,7 +49,8 @@ test('Command builds a prep cadence, applies it (past steps are skipped and name
   await cp.getByRole('button', { name: 'Save template' }).click()
   await expect(cp.getByRole('listitem').filter({ hasText: 'E2E Fake Op prep' })).toContainText('2 steps')
 
-  // Preview, then apply.
+  // Preview, then apply (on the event's own page).
+  await openEventFromList(cp, eventTitle)
   await article(cp, eventTitle).getByRole('button', { name: 'Apply prep cadence' }).click()
   await article(cp, eventTitle).getByLabel('Prep cadence').selectOption({ label: 'E2E Fake Op prep' })
   await expect(article(cp, eventTitle).getByText(/Kick-off: .*Skipped: that date has already passed/)).toBeVisible()
@@ -61,8 +62,13 @@ test('Command builds a prep cadence, applies it (past steps are skipped and name
   expect(made.data).toHaveLength(1)
   expect(made.data?.[0].title).toBe(`${eventTitle}: Briefing`)
   expect(made.data?.[0].audience).toBe('command')
-  await expect(article(cp, eventTitle).first().getByText('Prep timeline (1)')).toBeVisible()
-  await expect(article(cp, `${eventTitle}: Briefing`).getByText('PREP', { exact: true })).toBeVisible()
+  await expect(article(cp, eventTitle).getByRole('heading', { name: 'Prep timeline' })).toBeVisible()
+  // The prep meeting links back to its source event.
+  await article(cp, eventTitle).getByRole('link', { name: `${eventTitle}: Briefing` }).click()
+  await expect(cp.getByRole('heading', { level: 1, name: `${eventTitle}: Briefing`, exact: true })).toBeVisible()
+  await expect(article(cp, eventTitle).getByText('Prep meeting for')).toBeVisible()
+  await article(cp, eventTitle).getByRole('link', { name: eventTitle, exact: true }).click()
+  await expect(cp.getByRole('heading', { level: 1, name: eventTitle, exact: true })).toBeVisible()
 
   // The prep meeting is Command-only: invisible to a Member and to the public.
   const m = await asUser(mem.email, mem.password)
@@ -82,7 +88,7 @@ test('Command builds a prep cadence, applies it (past steps are skipped and name
   const before = new Date(made.data?.[0].starts_at as string).getTime()
   const move = moveEventLater(eventBefore.data?.starts_at as string, 5)
   expect(move.shiftDays).toBe(5)
-  await article(cp, eventTitle).first().getByRole('button', { name: 'Edit' }).click()
+  await article(cp, eventTitle).first().getByRole('link', { name: 'Edit' }).click()
   await cp.getByLabel('Starts (Phoenix time)').fill(move.input)
   await cp.getByLabel('Ends (optional)').fill('')
   await cp.getByRole('button', { name: 'Save event' }).click()

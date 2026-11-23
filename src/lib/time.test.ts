@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { dayKey, formatDateLine, formatPlainDate, formatStampPhoenix, formatTimeL, fromLocalInput, toLocalInput } from './time'
+import { dayKey, formatDateLine, formatDayShort, formatPlainDate, formatStampPhoenix, formatTimeL, formatWhen, fromLocalInput, toLocalInput } from './time'
 
 describe('Phoenix time', () => {
   // 2026-10-10 13:30 UTC is 06:30 in Phoenix (UTC-7, no daylight saving).
@@ -44,4 +44,24 @@ describe('formatPlainDate', () => {
     expect(formatPlainDate('2026-01-01')).toBe('01 JAN 2026')
   })
   it('passes junk through unchanged', () => expect(formatPlainDate('soon')).toBe('soon'))
+})
+
+describe('formatWhen (MVA-301)', () => {
+  const now = new Date('2026-11-23T12:00:00Z')
+  it('formats a start as weekday, day, month, 24-hour time with L', () => {
+    expect(formatWhen('2026-11-22T15:00:00Z', null, now)).toBe('Sun 22 Nov, 0800L')
+  })
+  it('formats a same-day range', () => {
+    expect(formatWhen('2026-11-22T15:00:00Z', '2026-11-22T23:00:00Z', now)).toBe('Sun 22 Nov, 0800L to 1600L')
+  })
+  it('adds the year only when it is not the current year', () => {
+    expect(formatWhen('2027-01-09T15:00:00Z', null, now)).toBe('Sat 09 Jan 2027, 0800L')
+    expect(formatDayShort('2026-12-31T15:00:00Z', now)).toBe('Thu 31 Dec')
+  })
+  it('names the end day when the event crosses midnight in Phoenix', () => {
+    expect(formatWhen('2026-11-22T05:00:00Z', '2026-11-22T09:00:00Z', now)).toBe('Sat 21 Nov, 2200L to Sun 22 Nov, 0200L')
+  })
+  it('uses Phoenix time, not the viewer zone', () => {
+    expect(formatWhen('2026-11-22T06:30:00Z', null, now)).toBe('Sat 21 Nov, 2330L')
+  })
 })

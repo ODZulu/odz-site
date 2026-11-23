@@ -8,7 +8,6 @@ import { RegistrationPanel } from '../components/RegistrationPanel'
 import { RsvpPanel } from '../components/RsvpPanel'
 import {
   audienceWords,
-  eventTimeRange,
   EVENT_TYPE_LABEL,
   getEvent,
   isOpenForSignup,
@@ -19,7 +18,7 @@ import { geoLink, osmLink } from '../lib/geo'
 import { Markdown } from '../lib/markdown'
 import { registrationMessage } from '../lib/registration'
 import { supabase } from '../lib/supabase'
-import { formatDateLine, formatTimeL } from '../lib/time'
+import { formatWhen } from '../lib/time'
 import { useLoad } from '../lib/useLoad'
 
 const PinMap = lazy(() => import('../components/PinMap'))
@@ -139,7 +138,7 @@ export default function EventPage() {
           {e.title}
         </h1>
         <p className="odz-muted" style={{ margin: '0.25rem 0 0' }}>
-          {formatDateLine(e.starts_at)} · {eventTimeRange(e)}
+          {formatWhen(e.starts_at, e.ends_at)}
           {detail ? ` · ${audienceWords(e.audience)}` : ''}
         </p>
         {source && (
@@ -192,8 +191,7 @@ export default function EventPage() {
       <Panel title="When and where">
         <KeyValue
           items={[
-            ['Date', formatDateLine(e.starts_at)],
-            ['Time', `${formatTimeL(e.starts_at)}${e.ends_at ? ` to ${formatTimeL(e.ends_at)}` : ''}`],
+            ['When', formatWhen(e.starts_at, e.ends_at)],
             ...(detail ? ([['Location', e.location_name || 'Not set']] as Array<[string, string]>) : []),
           ]}
         />
@@ -244,7 +242,7 @@ export default function EventPage() {
           <ul style={{ margin: 0, paddingLeft: '1.25rem' }}>
             {prep.map((m) => (
               <li key={m.id}>
-                <Link to={`/events/${m.id}`}>{m.title}</Link>: {formatDateLine(m.starts_at)} {formatTimeL(m.starts_at)}
+                <Link to={`/events/${m.id}`}>{m.title}</Link>: {formatWhen(m.starts_at, null)}
                 {m.status === 'cancelled' ? ' (cancelled)' : new Date(m.starts_at) < now ? ' (done)' : ''}
                 {m.description ? ` - ${m.description.split(/\r?\n/)[0]}` : ''}
               </li>
@@ -265,6 +263,7 @@ export default function EventPage() {
                 This event does not use registration.
                 {isOpenForSignup(e, now) ? ' Answer below so the team can plan.' : ' Answers are closed.'}
               </p>
+              <h3 className="odz-heading">RSVP and readiness</h3>
               <RsvpPanel event={e} />
             </>
           )}

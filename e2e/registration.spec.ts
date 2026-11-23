@@ -1,5 +1,6 @@
 import { expect, test, type Browser, type Page } from '@playwright/test'
 import { admin, asUser, cleanup, createEventRow, hasBackend, resetInviteAttempts, seedUser } from './helpers/backend'
+import { eventPage, openEvent, openEventFromList } from './helpers/events'
 
 test.skip(!hasBackend, 'needs a local Supabase stack (see docs/TESTING.md)')
 
@@ -21,10 +22,10 @@ async function signInPage(browser: Browser, u: { email: string; password: string
   return page
 }
 
-const article = (page: Page, title: string) => page.locator('article.odz-event').filter({ hasText: title })
+// MVA-301: registration lives on the event page, reached from the list by clicking the card.
+const article = (page: Page, _title: string) => eventPage(page)
 const openRegistration = async (page: Page, title: string) => {
-  await page.goto('/calendar')
-  await article(page, title).getByText('Registration', { exact: true }).click()
+  await openEvent(page, title)
 }
 
 test('Command requires registration with a capacity of one; the second member waitlists and is promoted on withdrawal', async ({ browser }) => {
@@ -35,16 +36,14 @@ test('Command requires registration with a capacity of one; the second member wa
 
   // RSVP is what the event shows until Command switches it to registration.
   const cp = await signInPage(browser, cmd)
-  await cp.goto('/calendar')
+  await openEvent(cp, ev.title)
   await expect(article(cp, ev.title).getByText('RSVP and readiness')).toBeVisible()
   await article(cp, ev.title).getByRole('button', { name: 'Require registration' }).click()
   await expect(article(cp, ev.title).getByText('RSVP and readiness')).toHaveCount(0)
-  await article(cp, ev.title).getByText('Registration', { exact: true }).click()
   await article(cp, ev.title).getByText('Registration settings').click()
   await article(cp, ev.title).getByLabel('Capacity (empty for no limit)').fill('1')
   await article(cp, ev.title).getByRole('button', { name: 'Save settings' }).click()
   await cp.reload()
-  await article(cp, ev.title).getByText('Registration', { exact: true }).click()
   await expect(article(cp, ev.title).getByText('0 of 1 places taken.')).toBeVisible()
 
   // First member registers; the second is waitlisted.
@@ -98,8 +97,8 @@ test('Command marks attendance after the event, adds a walk-in, confirms, and at
   const cp = await signInPage(browser, cmd)
   await cp.goto('/calendar')
   await cp.getByText(/Past events/).click()
+  await openEventFromList(cp, title)
   const a = article(cp, title)
-  await a.getByText('Registration', { exact: true }).click()
   const row = (callsign: string) => a.locator('div.odz-row').filter({ hasText: callsign })
 
   // Confirming needs everyone marked.
@@ -133,8 +132,8 @@ test('Command marks attendance after the event, adds a walk-in, confirms, and at
   const p2 = await signInPage(browser, m2)
   await p2.goto('/calendar')
   await p2.getByText(/Past events/).click()
-  await article(p2, title).getByText('Registration', { exact: true }).click()
-  await expect(article(p2, title).getByText('Result: No-show')).toBeVisible()
+  await openEventFromList(p2, title)
+  await expect(article(p2, title).getByText('Your result: No-show')).toBeVisible()
   await expect(article(p2, title).getByRole('button', { name: 'Attended' })).toHaveCount(0)
   const m = await asUser(m2.email, m2.password)
   expect((await m.rpc('event_attendance_set', { p_event: eventId, p_member: m2.id, p_result: 'attended', p_reason: 'Fake reason' })).error).not.toBeNull()

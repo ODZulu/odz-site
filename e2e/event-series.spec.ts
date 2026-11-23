@@ -1,5 +1,6 @@
 import { expect, test, type Browser, type Page } from '@playwright/test'
 import { admin, asUser, cleanup, hasBackend, resetInviteAttempts, seedUser } from './helpers/backend'
+import { eventCard, eventPage, openEventFromList } from './helpers/events'
 
 test.skip(!hasBackend, 'needs a local Supabase stack (see docs/TESTING.md)')
 
@@ -21,7 +22,8 @@ async function signInPage(browser: Browser, u: { email: string; password: string
   return page
 }
 
-const article = (page: Page, title: string) => page.locator('article.odz-event').filter({ hasText: title })
+// MVA-301: the list holds one link-card per event; Edit, Duplicate and New event are their own pages.
+const article = (page: Page, title: string) => eventCard(page, title)
 const inDays = (n: number) => new Date(Date.now() + n * 86_400_000).toISOString().slice(0, 10)
 
 test('Command makes a Command-only weekly series; lower tiers and the public never see it; one instance is edited, the series is edited, an event is duplicated, the series is cancelled', async ({ browser }) => {
@@ -40,7 +42,7 @@ test('Command makes a Command-only weekly series; lower tiers and the public nev
   await cp.getByRole('button', { name: 'Create series' }).click()
   await expect(cp.getByRole('listitem').filter({ hasText: /Every week on/ })).toBeVisible()
   await expect(article(cp, base).first()).toBeVisible()
-  await expect(article(cp, base).first().getByText('COMMAND ONLY')).toBeVisible()
+  await expect(article(cp, base).first().getByText('Command only')).toBeVisible()
 
   // The database has 12-14 real instances, and only Command can see any of them.
   const total = (await admin().from('events').select('id', { count: 'exact', head: true }).eq('title', base)).count ?? 0
@@ -56,10 +58,14 @@ test('Command makes a Command-only weekly series; lower tiers and the public nev
   await expect(mp.getByText('Standing meetings')).toHaveCount(0)
 
   // Edit one instance by hand.
-  await article(cp, base).first().getByRole('button', { name: 'Edit' }).click()
+  await openEventFromList(cp, base)
+  await expect(eventPage(cp).getByText('Part of')).toBeVisible()
+  await eventPage(cp).getByRole('link', { name: 'Edit' }).click()
   await expect(cp.getByText('belongs to a standing series')).toBeVisible()
   await cp.getByLabel('Title', { exact: true }).fill(`${base} One-off`)
   await cp.getByRole('button', { name: 'Save event' }).click()
+  await expect(cp.getByRole('heading', { level: 1, name: `${base} One-off`, exact: true })).toBeVisible()
+  await cp.goto('/calendar')
   await expect(article(cp, `${base} One-off`)).toHaveCount(1)
 
   // Edit the series: every other future instance changes, the hand-edited one does not.
@@ -73,7 +79,8 @@ test('Command makes a Command-only weekly series; lower tiers and the public nev
   expect(renamed).toBe(total - 1)
 
   // Duplicate an event: same title, type and audience, a new date, no RSVPs.
-  await article(cp, `${base} Renamed`).first().getByRole('button', { name: 'Duplicate' }).click()
+  await article(cp, `${base} Renamed`).first().click()
+  await eventPage(cp).getByRole('link', { name: 'Duplicate' }).click()
   await expect(cp.getByLabel('Title', { exact: true })).toHaveValue(`${base} Renamed`)
   await expect(cp.getByLabel('Starts (Phoenix time)')).toHaveValue('')
   await cp.getByLabel('Starts (Phoenix time)').fill('2030-01-05T10:00')
@@ -85,6 +92,7 @@ test('Command makes a Command-only weekly series; lower tiers and the public nev
   expect(dup.data?.[0].series_id).toBeNull()
 
   // Cancel the series: every future instance is cancelled, the duplicate (not in the series) is not.
+  await cp.goto('/calendar')
   await cp.getByRole('listitem').filter({ hasText: /Every week on/ }).getByRole('button', { name: 'Cancel series' }).click()
   await cp.getByRole('button', { name: /Confirm: cancel all future meetings/ }).click()
   await expect(cp.getByRole('listitem').filter({ hasText: '(cancelled)' })).toBeVisible()
@@ -97,17 +105,17 @@ test('a public event stays public; restricting it hides it from the public API',
   const title = 'E2E Fake Audience Event'
   const cp = await signInPage(browser, cmd)
   await cp.goto('/calendar')
-  await cp.getByRole('button', { name: 'New event' }).click()
+  await cp.getByRole('link', { name: 'New event' }).click()
   await cp.getByLabel('Title', { exact: true }).fill(title)
   await cp.getByLabel('Starts (Phoenix time)').fill('2030-02-02T10:00')
   await cp.getByRole('button', { name: 'Save event' }).click()
-  await expect(article(cp, title)).toBeVisible()
+  await expect(cp.getByRole('heading', { level: 1, name: title, exact: true })).toBeVisible()
   const anon = await asUser()
   expect((await anon.from('events').select('id').eq('title', title)).data).toHaveLength(1)
 
-  await article(cp, title).getByRole('button', { name: 'Edit' }).click()
+  await eventPage(cp).getByRole('link', { name: 'Edit' }).click()
   await cp.getByLabel('Who can see this event').selectOption('command')
   await cp.getByRole('button', { name: 'Save event' }).click()
-  await expect(article(cp, title).getByText('COMMAND ONLY')).toBeVisible()
+  await expect(eventPage(cp).getByText('Command only')).toBeVisible()
   expect((await anon.from('events').select('id').eq('title', title)).data ?? []).toHaveLength(0)
 })

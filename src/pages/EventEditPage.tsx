@@ -2,24 +2,24 @@ import { Navigate, useLocation, useNavigate, useParams } from 'react-router'
 import { useAuth } from '../auth/AuthProvider'
 import { ButtonLink } from '../components'
 import { EventEditor } from '../components/EventEditor'
-import { eventToForm, getEvent } from '../lib/events'
+import { emptyEventForm, eventToForm, getEvent } from '../lib/events'
 import { useLoad } from '../lib/useLoad'
 
 /**
- * Edit or duplicate an event on its own page (MVA-301): heading first, then the form, with focus in it.
- * Same capability check as the calendar (`write_events`); anyone else is sent back to the event page,
- * which itself sends a signed-out visitor to login.
+ * Edit, duplicate or create an event on its own page (MVA-301): heading first, then the form, with
+ * focus in it. Same capability check as the calendar (`write_events`); anyone else is sent back to the
+ * event page (or the calendar, for a new event), which itself sends a signed-out visitor to login.
  */
-export default function EventEditPage({ mode }: { mode: 'edit' | 'duplicate' }) {
+export default function EventEditPage({ mode }: { mode: 'edit' | 'duplicate' | 'new' }) {
   const { eventId = '' } = useParams()
   const { can } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const write = can('write_events')
-  const data = useLoad(() => (write ? getEvent(eventId, true) : Promise.resolve(null)), [eventId, write])
+  const data = useLoad(() => (write && mode !== 'new' ? getEvent(eventId, true) : Promise.resolve(null)), [eventId, write, mode])
 
-  if (!write) return <Navigate to={`/events/${eventId}`} replace />
-  if (data.loading) {
+  if (!write) return <Navigate to={mode === 'new' ? '/calendar' : `/events/${eventId}`} replace />
+  if (data.loading && mode !== 'new') {
     return (
       <p className="odz-muted" role="status">
         Loading
@@ -27,7 +27,7 @@ export default function EventEditPage({ mode }: { mode: 'edit' | 'duplicate' }) 
     )
   }
   const e = data.data
-  if (!e) {
+  if (!e && mode !== 'new') {
     return (
       <>
         <h1 className="odz-title">{data.failed ? 'Could not load the event' : 'Event not found'}</h1>
@@ -41,22 +41,25 @@ export default function EventEditPage({ mode }: { mode: 'edit' | 'duplicate' }) 
   }
 
   // Close and Cancel go back to where the member came from; opened directly, to the event page.
-  const leave = () => (location.key !== 'default' ? navigate(-1) : navigate(`/events/${eventId}`, { replace: true }))
-  const heading = mode === 'edit' ? 'Edit event' : 'Duplicate event'
+  const home = mode === 'new' ? '/calendar' : `/events/${eventId}`
+  const leave = () => (location.key !== 'default' ? navigate(-1) : navigate(home, { replace: true }))
+  const heading = mode === 'edit' ? 'Edit event' : mode === 'duplicate' ? 'Duplicate event' : 'New event'
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
       <header>
         <h1 className="odz-title">{heading}</h1>
         <p className="odz-muted" style={{ margin: '0.25rem 0 0' }}>
-          {mode === 'edit' ? e.title : `Copy of ${e.title}. Set a new date and time.`}
+          {!e ? 'Set a title and a start time.' : mode === 'edit' ? e.title : `Copy of ${e.title}. Set a new date and time.`}
         </p>
       </header>
       <EventEditor
         initial={
-          mode === 'edit'
-            ? { id: e.id, form: eventToForm(e), seriesId: e.series_id ?? null }
-            : { id: null, form: eventToForm(e, 'duplicate') }
+          !e
+            ? { id: null, form: emptyEventForm }
+            : mode === 'edit'
+              ? { id: e.id, form: eventToForm(e), seriesId: e.series_id ?? null }
+              : { id: null, form: eventToForm(e, 'duplicate') }
         }
         panelTitle="Event details"
         autoFocus
@@ -66,7 +69,7 @@ export default function EventEditPage({ mode }: { mode: 'edit' | 'duplicate' }) 
         onSaved={(id) =>
           mode === 'edit' && (location.state as { fromEvent?: boolean } | null)?.fromEvent
             ? navigate(-1)
-            : navigate(`/events/${id ?? e.id}`, { replace: true })
+            : navigate(id ? `/events/${id}` : e ? `/events/${e.id}` : '/calendar', { replace: true })
         }
       />
     </div>

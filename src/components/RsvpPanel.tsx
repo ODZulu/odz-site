@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { canRsvp, groupRsvps, loadReadiness, loadRsvps, RSVP_LABEL, saveRsvp, type Rsvp } from '../lib/hq'
 import { useLoad } from '../lib/useLoad'
 import { useAuth } from '../auth/AuthProvider'
-import { Button, buttonClass } from './Button'
+import { Button } from './Button'
 import { ReadinessMeter } from './ReadinessMeter'
 
 /** IN / OUT / TBD for one event, plus who answered what. Members only (RLS); shown on the event detail. */
@@ -52,16 +52,5 @@ export function RsvpPanel({ event }: { event: { id: string; starts_at: string; s
         ) : null,
       )}
     </div>
-  )
-}
-
-/** Loads the RSVP panel only when opened, so a long agenda does not fetch every event's answers up front. */
-export function RsvpToggle({ event }: { event: { id: string; starts_at: string; status: string } }) {
-  const [open, setOpen] = useState(false)
-  return (
-    <details onToggle={(e) => setOpen((e.currentTarget as HTMLDetailsElement).open)}>
-      <summary className={buttonClass('sec', true)}>RSVP and readiness</summary>
-      {open && <RsvpPanel event={event} />}
-    </details>
   )
 }
