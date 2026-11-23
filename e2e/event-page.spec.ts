@@ -71,7 +71,7 @@ test('Admin edits and cancels from the page', async ({ page }) => {
   await expect(page.getByRole('heading', { level: 1, name: `${ev.title} renamed` })).toBeVisible()
   await page.getByRole('button', { name: 'Cancel event' }).click()
   await page.getByRole('button', { name: 'Confirm cancel' }).click()
-  await expect(page.getByText('CANCELLED')).toBeVisible()
+  await expect(page.getByText('CANCELLED', { exact: true })).toBeVisible()
 })
 
 test('a past event shows no register or withdraw controls', async ({ page }) => {
