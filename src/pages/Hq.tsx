@@ -1,7 +1,8 @@
 import { Link } from 'react-router'
 import { useAuth } from '../auth/AuthProvider'
-import { Chip, KeyValue, Panel } from '../components'
+import { ButtonLink, Chip, KeyValue, Panel, Sep } from '../components'
 import { ReadinessMeter } from '../components/ReadinessMeter'
+import { loadProspects, mergeSchedule, prospectHref } from '../lib/prospects'
 import { listEvents, listPublicEvents, splitUpcoming, type EventDetails, type PublicEvent } from '../lib/events'
 import { authorLabel, breakdownBars, loadReadiness, loadTierBreakdown, loadTraffic } from '../lib/hq'
 import { formatDateLine, formatStampPhoenix, formatTimeL } from '../lib/time'
@@ -20,6 +21,10 @@ export default function Hq() {
   const events = useLoad<AnyEvent[]>(() => (detail ? listEvents() : listPublicEvents()), [detail])
   const upcoming = splitUpcoming(events.data ?? [], new Date()).upcoming.filter((e) => e.status === 'scheduled')
   const next = upcoming[0]
+  // Prospects (MVA-260) join the schedule only. They are never "next event" and carry no readiness.
+  const seeProspects = can('read_opportunities')
+  const prospects = useLoad(() => (seeProspects ? loadProspects(new Date()) : Promise.resolve([])), [seeProspects])
+  const schedule = mergeSchedule(upcoming, prospects.data ?? [], new Date())
 
   const readiness = useLoad(() => (next && detail ? loadReadiness(next.id) : Promise.resolve(null)), [next?.id, detail])
   const traffic = useLoad(() => loadTraffic(5))
@@ -63,7 +68,7 @@ export default function Hq() {
             )}
           </Panel>
 
-          <Panel title="Traffic" action={<Link to="/traffic">More</Link>}>
+          <Panel title="Traffic" action={<ButtonLink to="/traffic" variant="sec" small>More</ButtonLink>}>
             {traffic.loading ? (
               <p className="odz-muted" role="status">
                 Loading
@@ -77,7 +82,11 @@ export default function Hq() {
                 <article key={p.id} className="odz-post">
                   <div className="odz-row">
                     {p.pinned && <Chip variant="accent">PINNED</Chip>}
-                    <span className="odz-label">{`${authorLabel(p.author)} · ${formatStampPhoenix(p.created_at)}`}</span>
+                    <span className="odz-label">
+                      {authorLabel(p.author)}
+                      <Sep />
+                      {formatStampPhoenix(p.created_at)}
+                    </span>
                   </div>
                   <h3 className="odz-post__title">{p.title}</h3>
                   <p style={{ whiteSpace: 'pre-wrap' }}>{p.body}</p>
@@ -88,27 +97,53 @@ export default function Hq() {
         </div>
 
         <div className="odz-col">
-          <Panel title="Schedule" action={<Link to="/calendar">Calendar</Link>}>
+          <Panel title="Schedule" action={<ButtonLink to="/calendar" variant="sec" small>Calendar</ButtonLink>}>
             {events.loading ? (
               <p className="odz-muted" role="status">
                 Loading
               </p>
-            ) : upcoming.length === 0 ? (
+            ) : schedule.length === 0 ? (
               <p className="odz-muted">Nothing scheduled.</p>
             ) : (
-              upcoming.slice(0, 5).map((e) => (
-                <div className="odz-sched" key={e.id}>
-                  <div className="odz-date">
-                    <b>{dayOf(e.starts_at)}</b>
-                    <span className="odz-label">{monthOf(e.starts_at)}</span>
+              schedule.slice(0, 5).map((i) =>
+                i.kind === 'event' ? (
+                  <div className="odz-sched" key={i.event.id}>
+                    <div className="odz-date">
+                      <b>{dayOf(i.event.starts_at)}</b>
+                      <span className="odz-label">{monthOf(i.event.starts_at)}</span>
+                    </div>
+                    <div className="odz-sched__body">
+                      <p className="odz-heading">{i.event.title}</p>
+                      <p className="odz-label">
+                        {formatTimeL(i.event.starts_at)}
+                        {detail && i.event.location_name && (
+                          <>
+                            <Sep />
+                            {i.event.location_name}
+                          </>
+                        )}
+                      </p>
+                    </div>
+                    <Chip variant="plain">{i.event.event_type.toUpperCase()}</Chip>
                   </div>
-                  <div className="odz-sched__body">
-                    <p className="odz-heading">{e.title}</p>
-                    <p className="odz-label">{`${formatTimeL(e.starts_at)}${detail && e.location_name ? ` · ${e.location_name}` : ''}`}</p>
+                ) : (
+                  <div className="odz-sched odz-sched--prospect" key={`p-${i.prospect.id}`}>
+                    <div className="odz-date">
+                      <b>{i.prospect.starts_on.slice(8, 10)}</b>
+                      <span className="odz-label">{formatDateLine(`${i.prospect.starts_on}T12:00:00-07:00`).split(' ')[2]}</span>
+                    </div>
+                    <div className="odz-sched__body">
+                      <p className="odz-heading">
+                        <Link to={prospectHref(i.prospect.id)} style={{ textDecoration: 'none' }}>
+                          {i.prospect.title}
+                        </Link>
+                      </p>
+                      <p className="odz-label">{i.prospect.location_text ?? 'Not an event yet'}</p>
+                    </div>
+                    <Chip variant="accent">PROSPECT</Chip>
                   </div>
-                  <Chip variant="plain">{e.event_type.toUpperCase()}</Chip>
-                </div>
-              ))
+                ),
+              )
             )}
           </Panel>
 

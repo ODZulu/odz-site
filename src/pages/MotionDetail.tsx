@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { Link, useParams } from 'react-router'
+import { useParams } from 'react-router'
 import { useAuth } from '../auth/AuthProvider'
-import { Button, Chip, ConfirmAction, KeyValue, Panel, Select, Table, Textarea } from '../components'
+import { Button, ButtonLink, Chip, ConfirmAction, KeyValue, Panel, Select, Table, Textarea } from '../components'
 import {
   bodyLabel,
   motionMessage,
@@ -103,7 +103,7 @@ export default function MotionDetail() {
       <>
         <h1 className="odz-title">Not found</h1>
         <p>
-          <Link to="/motions">Back to the motions</Link>
+          <ButtonLink to="/motions" variant="sec" small>Back to the motions</ButtonLink>
         </p>
       </>
     )
@@ -135,7 +135,7 @@ export default function MotionDetail() {
   return (
     <>
       <p style={{ marginBottom: '0.5rem' }}>
-        <Link to="/motions">Motions</Link>
+        <ButtonLink to="/motions" variant="sec" small>Motions</ButtonLink>
       </p>
       <div className="odz-row" style={{ justifyContent: 'space-between', marginBottom: '0.75rem' }}>
         <h1 className="odz-title">{m.title}</h1>

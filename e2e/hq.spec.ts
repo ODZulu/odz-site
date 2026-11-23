@@ -53,6 +53,9 @@ test('Command posts traffic; a Member sees it, pinned first, and cannot post', a
   const ctx = await browser.newContext()
   const memberPage = await ctx.newPage()
   await signIn(memberPage, mem)
+  // allInnerTexts() does not wait, and the Traffic panel loads after sign-in (MVA-298): wait for both posts first.
+  await expect(memberPage.locator('.odz-post__title', { hasText: 'E2E Plain notice' })).toBeVisible()
+  await expect(memberPage.locator('.odz-post__title', { hasText: 'E2E Pinned notice' })).toBeVisible()
   const titles = await memberPage.locator('.odz-post__title').allInnerTexts()
   expect(titles.slice(0, 2)).toEqual(['E2E Pinned notice', 'E2E Plain notice'])
   await expect(memberPage.getByText('<b>Fake</b> message two')).toBeVisible() // text, not markup

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { Link, Navigate, useNavigate, useParams } from 'react-router'
+import { Navigate, useNavigate, useParams } from 'react-router'
 import { useAuth } from '../auth/AuthProvider'
-import { Button, ConfirmAction, Field, Panel, Select, Textarea } from '../components'
+import { Button, ButtonLink, ConfirmAction, Field, Panel, Select, Textarea } from '../components'
 import { ACCEPT, formatSize } from '../lib/files'
 import {
   deleteMinutes,
@@ -90,7 +90,7 @@ export default function MinutesEdit() {
   return (
     <>
       <p style={{ marginBottom: '0.5rem' }}>
-        <Link to="/minutes">Minutes</Link>
+        <ButtonLink to="/minutes" variant="sec" small>Minutes</ButtonLink>
       </p>
       <h1 className="odz-title" style={{ marginBottom: '1rem' }}>
         {creating ? 'New minutes' : 'Edit minutes'}

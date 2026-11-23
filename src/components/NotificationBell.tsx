@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
+import { Bell } from 'lucide-react'
 import { unreadCount } from '../lib/notifications'
 
 /** Bell with the unread count. Refreshes every minute and when the app comes back to the foreground. */
@@ -26,8 +27,13 @@ export function NotificationBell() {
   }, [])
 
   return (
-    <Link to="/notifications" className="odz-label" aria-label={count > 0 ? `Notifications, ${count} unread` : 'Notifications'}>
-      ALERTS{count > 0 ? ` ${count > 99 ? '99+' : count}` : ''}
+    <Link to="/notifications" className="odz-iconbtn" aria-label={count > 0 ? `Notifications, ${count} unread` : 'Notifications'}>
+      <Bell size={20} strokeWidth={1.75} aria-hidden="true" focusable="false" />
+      {count > 0 && (
+        <span className="odz-badge" aria-hidden="true">
+          {count > 99 ? '99+' : count}
+        </span>
+      )}
     </Link>
   )
 }

@@ -1,8 +1,9 @@
 import type { Session } from '@supabase/supabase-js'
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { useLocation } from 'react-router'
+import { useLocation, useNavigate } from 'react-router'
 import type { AccessState, AccountStatus } from '../lib/access'
 import { mustSignOut, sameSnapshot, shouldRefresh, TICK_MS, type RefreshTrigger } from '../lib/sessionRefresh'
+import { performSignOut, shouldReloadOnRestore } from '../lib/signOut'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 
 export type Profile = {
@@ -78,9 +79,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const lastAt = useRef(0)
   const inFlight = useRef(false)
 
-  const signOut = useCallback(async () => {
-    await supabase?.auth.signOut()
-    setLoaded(null)
+  // `navigate` changes identity on every route change. signOut must stay stable: loadProfile depends on it,
+  // and a new loadProfile re-reads the profile on every navigation (which also signed out a suspended account).
+  const navigate = useNavigate()
+  const navigateRef = useRef(navigate)
+  navigateRef.current = navigate
+  // Sign out always ends on the login page, from any page, including the public ones (MVA-300).
+  const signOut = useCallback(
+    () => performSignOut({ auth: supabase?.auth, clear: () => setLoaded(null), go: (path) => navigateRef.current(path, { replace: true }) }),
+    [],
+  )
+
+  // A page restored from the back/forward cache is the old DOM: after a sign-out it could still show member data.
+  useEffect(() => {
+    if (!supabase) return
+    const client = supabase
+    const onShow = (e: PageTransitionEvent) => {
+      if (!e.persisted) return
+      void client.auth.getSession().then(({ data }) => {
+        if (shouldReloadOnRestore(true, data.session !== null)) window.location.reload()
+      })
+    }
+    window.addEventListener('pageshow', onShow)
+    return () => window.removeEventListener('pageshow', onShow)
   }, [])
 
   const loadProfile = useCallback(async () => {

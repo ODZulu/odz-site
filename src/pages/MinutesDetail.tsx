@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, Navigate, useParams } from 'react-router'
 import { useAuth } from '../auth/AuthProvider'
-import { Button, Chip, KeyValue, Panel } from '../components'
+import { Button, ButtonLink, Chip, KeyValue, Panel } from '../components'
 import { buttonClass } from '../components/Button'
 import { formatSize } from '../lib/files'
 import { Markdown } from '../lib/markdown'
@@ -38,7 +38,7 @@ export default function MinutesDetail() {
       <>
         <h1 className="odz-title">Not found</h1>
         <p>
-          <Link to="/minutes">Back to the minutes</Link>
+          <ButtonLink to="/minutes" variant="sec" small>Back to the minutes</ButtonLink>
         </p>
       </>
     )
@@ -47,7 +47,7 @@ export default function MinutesDetail() {
   return (
     <>
       <p style={{ marginBottom: '0.5rem' }} className="odz-noprint">
-        <Link to="/minutes">Minutes</Link>
+        <ButtonLink to="/minutes" variant="sec" small>Minutes</ButtonLink>
       </p>
       <div className="odz-row" style={{ justifyContent: 'space-between', marginBottom: '1rem' }}>
         <h1 className="odz-title">{m.title}</h1>

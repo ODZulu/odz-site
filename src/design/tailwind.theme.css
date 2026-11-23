@@ -16,6 +16,23 @@
   --color-pending: var(--pending);
   --color-alert: var(--alert);
   --color-focus: var(--focus);
+  --color-field: var(--field);
+  --color-surface-top: var(--surface-top);
+  --color-surface-hover: var(--surface-hover);
+  --color-ink-subtle: var(--ink-subtle);
+  --color-primary-soft: var(--primary-soft);
+  --color-alert-fill: var(--alert-fill);
+  --color-tint-sage: var(--tint-sage);
+  --color-on-tint-sage: var(--on-tint-sage);
+  --color-tint-sand: var(--tint-sand);
+  --color-on-tint-sand: var(--on-tint-sand);
+  --color-tint-steel: var(--tint-steel);
+  --color-on-tint-steel: var(--on-tint-steel);
+  --color-tint-clay: var(--tint-clay);
+  --color-on-tint-clay: var(--on-tint-clay);
+  --color-tint-notice: var(--tint-notice);
+  --color-on-tint-notice: var(--on-tint-notice);
+  --color-notice-line: var(--notice-line);
   --color-mark-navy: var(--mark-navy);
   --color-mark-red: var(--mark-red);
   --color-mark-gold: var(--mark-gold);
@@ -27,4 +44,7 @@
   --font-data: "IBM Plex Mono", ui-monospace, monospace; /* utility: font-data (avoids a self-referencing --font-mono) */
   --radius-0: 0;
   --radius-1: 2px;
+  --radius-2: 7px;
+  --radius-3: 10px;
+  --radius-4: 12px;
 }

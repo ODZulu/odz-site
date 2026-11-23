@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Link, Navigate, useNavigate, useParams } from 'react-router'
+import { Navigate, useNavigate, useParams } from 'react-router'
 import { useAuth } from '../auth/AuthProvider'
-import { Button, ConfirmAction, Field, Panel, Select, Textarea } from '../components'
+import { Button, ButtonLink, ConfirmAction, Field, Panel, Select, Textarea } from '../components'
 import {
   deleteDocument,
   DOC_TYPES,
@@ -80,7 +80,7 @@ export default function DocumentEdit() {
   return (
     <>
       <p style={{ marginBottom: '0.5rem' }}>
-        <Link to="/documents">Documents</Link>
+        <ButtonLink to="/documents" variant="sec" small>Documents</ButtonLink>
       </p>
       <h1 className="odz-title" style={{ marginBottom: '1rem' }}>
         {creating ? 'New document' : 'Edit document'}

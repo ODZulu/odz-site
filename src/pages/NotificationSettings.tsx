@@ -1,6 +1,5 @@
-import { useEffect, useState } from 'react'
-import { Link } from 'react-router'
-import { Button, Chip, Panel } from '../components'
+import { useEffect, useRef, useState } from 'react'
+import { Button, ButtonLink, Chip, Panel } from '../components'
 import {
   currentSupport,
   disablePush,
@@ -12,6 +11,7 @@ import {
   type Prefs,
 } from '../lib/notifications'
 import { LEAD_PRESETS, normalizeLeads } from '../lib/pushPayload'
+import { createSaveGate } from '../lib/saveGate'
 import { useLoad } from '../lib/useLoad'
 
 /** /settings/notifications: push on or off, lead times, and a test button. iOS Safari gets a plain notice. */
@@ -22,6 +22,8 @@ export default function NotificationSettings() {
   const [pushOn, setPushOn] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  // Saves can overlap (each click saves). Only the newest one may report back or reload (MVA-247).
+  const gate = useRef(createSaveGate()).current
 
   useEffect(() => {
     if (prefs.data) {
@@ -31,17 +33,22 @@ export default function NotificationSettings() {
   }, [prefs.data])
 
   async function persist(next: Prefs) {
+    const ticket = gate.begin()
+    let result = 'Saved.'
     try {
       await savePrefs(next)
-      setMessage('Saved.')
     } catch {
-      setMessage('Could not save.')
+      result = 'Could not save.'
     }
+    // A newer save or a refusal came after this one: leave the message and the boxes to it.
+    if (!gate.isCurrent(ticket)) return
+    setMessage(result)
     await prefs.reload()
   }
 
   async function togglePush(on: boolean) {
     setBusy(true)
+    gate.supersede()
     setMessage(null)
     if (on) {
       const res = await enablePush()
@@ -62,6 +69,7 @@ export default function NotificationSettings() {
     const next = on ? [...leads, minutes] : leads.filter((m) => m !== minutes)
     const normalized = normalizeLeads(next)
     if (!normalized) {
+      gate.supersede()
       setMessage('Keep at least one reminder time.')
       return
     }
@@ -70,6 +78,7 @@ export default function NotificationSettings() {
   }
 
   async function test() {
+    gate.supersede()
     setMessage(null)
     const r = await sendTest()
     setMessage(
@@ -86,7 +95,7 @@ export default function NotificationSettings() {
   return (
     <>
       <p style={{ marginBottom: '0.5rem' }}>
-        <Link to="/notifications">Notifications</Link>
+        <ButtonLink to="/notifications" variant="sec" small>Notifications</ButtonLink>
       </p>
       <h1 className="odz-title" style={{ marginBottom: '1rem' }}>
         Notification settings

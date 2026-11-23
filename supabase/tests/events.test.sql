@@ -96,7 +96,7 @@ begin
   update public.event_details set location_name = 'Hacked' where event_id = ev;
   get diagnostics n = row_count;
   if n <> 0 then raise exception 'FAIL: member edited event details'; end if;
-  begin perform public.save_event(ev, 'Hacked', 'Other', now() + interval '1 day', null, null, null, null);
+  begin perform public.save_event(ev, 'Hacked', 'Other', now() + interval '1 day', null, null, null, null, null, null, false, null, null);
     raise exception 'FAIL: member saved an event through save_event';
   exception when others then if sqlerrm like 'FAIL:%' then raise; end if; end;
   begin insert into public.events (title, starts_at) values ('Fake member', now());
@@ -152,23 +152,23 @@ begin
   ------------------------------------------------------------------ save_event: both tables, one audit row
   perform set_config('request.jwt.claims', json_build_object('sub', v_cmd, 'role', 'authenticated')::text, true);
   set local role authenticated;
-  ev2 := public.save_event(null, 'Fake Saved', 'Training', now() + interval '5 days', null, 'Fake Spot', ' ', 'fake body');
+  ev2 := public.save_event(null, 'Fake Saved', 'Training', now() + interval '5 days', null, 'Fake Spot', ' ', 'fake body', null, null, false, null, 'public');
   select count(*) into n from public.event_details where event_id = ev2 and location_name = 'Fake Spot'
     and location_detail is null and description = 'fake body';
   if n <> 1 then raise exception 'FAIL: save_event did not store details (blank becomes null)'; end if;
-  perform public.save_event(ev2, 'Fake Saved Two', 'Training', now() + interval '6 days', null, 'Fake Spot B', null, 'fake body 2');
+  perform public.save_event(ev2, 'Fake Saved Two', 'Training', now() + interval '6 days', null, 'Fake Spot B', null, 'fake body 2', null, null, false, null, null);
   select count(*) into n from public.settings_audit where target = 'Fake Saved Two' and event = 'event_edited';
   if n <> 1 then raise exception 'FAIL: saving title and details together should log one edit (got %)', n; end if;
   select count(*) into n from public.settings_audit where detail ~* 'Fake Spot|fake body';
   if n <> 0 then raise exception 'FAIL: audit leaked event details'; end if;
-  begin perform public.save_event(ev2, 'x', 'Training', now(), now() - interval '1 hour', null, null, null);
+  begin perform public.save_event(ev2, 'x', 'Training', now(), now() - interval '1 hour', null, null, null, null, null, false, null, null);
     raise exception 'FAIL: save_event accepted end before start';
   exception when others then if sqlerrm like 'FAIL:%' then raise; end if; end;
   reset role;
 
   -- The function is not callable by anon.
   set local role anon;
-  begin perform public.save_event(null, 'Fake anon', 'Other', now(), null, null, null, null);
+  begin perform public.save_event(null, 'Fake anon', 'Other', now(), null, null, null, null, null, null, false, null, 'public');
     raise exception 'FAIL: anon called save_event';
   exception when others then if sqlerrm like 'FAIL:%' then raise; end if; end;
   reset role;

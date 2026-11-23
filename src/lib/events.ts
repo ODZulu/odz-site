@@ -1,3 +1,4 @@
+import { parseCoordinates } from './geo'
 import { dayKey, formatDateLine, fromLocalInput } from './time'
 import { supabase } from './supabase'
 
@@ -8,7 +9,9 @@ import { supabase } from './supabase'
 
 export const EVENT_TYPES = ['Game Day', 'Op', 'Training', 'Meeting', 'Other'] as const
 export type EventType = (typeof EVENT_TYPES)[number]
-export type EventStatus = 'scheduled' | 'cancelled'
+export type EventStatus = 'scheduled' | 'cancelled' | 'completed'
+/** Who a restricted event is for (MVA-228). Empty/null means public, as every event was before. */
+export type EventAudience = '' | 'members' | 'old_guard' | 'command'
 
 /** What anyone may see (the `events` table): that an event exists. No location, no description. */
 export type PublicEvent = {
@@ -18,6 +21,14 @@ export type PublicEvent = {
   starts_at: string
   ends_at: string | null
   status: EventStatus
+  /** Present for signed-in readers (the anon column set is unchanged). */
+  audience?: EventAudience | null
+  series_id?: string | null
+  series_date?: string | null
+  series_edited?: boolean
+  /** The event a prep meeting counts down to (MVA-229), and the "event date changed" flag. */
+  source_event_id?: string | null
+  cadence_review?: boolean
 }
 
 /** Members with read_event_details also get the `event_details` row (location, directions, description). */
@@ -25,6 +36,10 @@ export type EventDetails = PublicEvent & {
   location_name: string | null
   location_detail: string | null
   description: string | null
+  /** Coordinates live only in event_details (MVA-224): members with read_event_details only. */
+  latitude: number | null
+  longitude: number | null
+  hide_from_public_map: boolean
 }
 
 export type EventForm = {
@@ -36,6 +51,13 @@ export type EventForm = {
   location_name: string
   location_detail: string
   description: string
+  /** Decimal degrees as typed; both or neither. */
+  latitude: string
+  longitude: string
+  hide_from_public_map: boolean
+  /** Backfill: a past event recorded as completed. */
+  completed: boolean
+  audience: EventAudience
 }
 
 export const emptyEventForm: EventForm = {
@@ -46,6 +68,11 @@ export const emptyEventForm: EventForm = {
   location_name: '',
   location_detail: '',
   description: '',
+  latitude: '',
+  longitude: '',
+  hide_from_public_map: false,
+  completed: false,
+  audience: '',
 }
 
 export type EventErrors = Partial<Record<keyof EventForm, string>>
@@ -64,10 +91,23 @@ export function validateEventForm(f: EventForm): EventErrors {
   if (f.location_name.length > 120) e.location_name = 'Too long.'
   if (f.location_detail.length > 1000) e.location_detail = 'Too long (1000 characters).'
   if (f.description.length > 5000) e.description = 'Too long (5000 characters).'
+  const pin = parseCoordinates(f.latitude, f.longitude)
+  if (!pin.ok) e.latitude = pin.error
+  if (f.completed && start && new Date(start) > new Date()) e.completed = 'A completed event must have started already.'
   return e
 }
 
-/** The arguments of the save_event() RPC: the event and its details, saved together. */
+function pinArgs(f: EventForm) {
+  const pin = parseCoordinates(f.latitude, f.longitude)
+  return {
+    p_latitude: pin.ok && pin.value ? pin.value.lat : null,
+    p_longitude: pin.ok && pin.value ? pin.value.lng : null,
+    p_hide_from_public_map: f.hide_from_public_map,
+    p_status: f.completed ? 'completed' : null,
+  }
+}
+
+/** The arguments of the save_event() RPC: the event, its details and its audience, saved together. */
 export function toSaveArgs(id: string | null, f: EventForm) {
   return {
     p_id: id,
@@ -78,6 +118,9 @@ export function toSaveArgs(id: string | null, f: EventForm) {
     p_location_name: f.location_name.trim() || null,
     p_location_detail: f.location_detail.trim() || null,
     p_description: f.description.trim() || null,
+    ...pinArgs(f),
+    // Sent with the event so it is never saved without one. '' (the form's "everyone") is 'public'.
+    p_audience: f.audience || 'public',
   }
 }
 
@@ -120,7 +163,7 @@ export async function listPublicEvents(): Promise<PublicEvent[]> {
 }
 
 type EventWithDetails = PublicEvent & {
-  event_details: { location_name: string | null; location_detail: string | null; description: string | null } | null
+  event_details: { location_name: string | null; location_detail: string | null; description: string | null; latitude: number | null; longitude: number | null; hide_from_public_map: boolean } | null
 }
 
 /** Joins each event to its details row; a caller without read_event_details gets null details. */
@@ -130,19 +173,25 @@ export function flattenDetails(rows: EventWithDetails[]): EventDetails[] {
     location_name: d?.location_name ?? null,
     location_detail: d?.location_detail ?? null,
     description: d?.description ?? null,
+    latitude: d?.latitude ?? null,
+    longitude: d?.longitude ?? null,
+    hide_from_public_map: d?.hide_from_public_map ?? false,
   }))
 }
 
 export async function listEvents(): Promise<EventDetails[]> {
   if (!supabase) return []
+  // Keep standing meetings filled in 90 days ahead (idempotent; harmless if it fails).
+  await supabase.rpc('event_series_roll')
   const { data, error } = await supabase
     .from('events')
-    .select('id,title,event_type,starts_at,ends_at,status,event_details(location_name,location_detail,description)')
+    .select('id,title,event_type,starts_at,ends_at,status,audience,series_id,series_date,series_edited,source_event_id,cadence_review,event_details(location_name,location_detail,description,latitude,longitude,hide_from_public_map)')
     .order('starts_at')
   if (error) throw new Error('events')
   return flattenDetails(data as unknown as EventWithDetails[])
 }
 
+/** One call: the event, its details and its audience are saved together or not at all (MVA-303). */
 export async function createEvent(form: EventForm): Promise<void> {
   if (!supabase) throw new Error('events')
   const { error } = await supabase.rpc('save_event', toSaveArgs(null, form))

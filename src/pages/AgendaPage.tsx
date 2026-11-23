@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { useAuth } from '../auth/AuthProvider'
-import { Button, Chip, ConfirmAction, Field, Panel, Select, Textarea } from '../components'
+import { Button, ButtonLink, Chip, ConfirmAction, Field, Panel, Select, Textarea } from '../components'
 import {
   agendaMessage,
   emptyItemForm,
@@ -103,7 +103,7 @@ export default function AgendaPage() {
       <>
         <h1 className="odz-title">Not found</h1>
         <p>
-          <Link to="/calendar">Back to the calendar</Link>
+          <ButtonLink to="/calendar" variant="sec" small>Back to the calendar</ButtonLink>
         </p>
       </>
     )
@@ -190,7 +190,7 @@ export default function AgendaPage() {
   return (
     <>
       <p style={{ marginBottom: '0.5rem' }}>
-        <Link to="/calendar">Calendar</Link>
+        <ButtonLink to="/calendar" variant="sec" small>Calendar</ButtonLink>
       </p>
       <div className="odz-row" style={{ justifyContent: 'space-between', marginBottom: '0.25rem' }}>
         <h1 className="odz-title">Agenda: {event.title}</h1>

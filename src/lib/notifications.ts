@@ -5,7 +5,7 @@ import { supabase } from './supabase'
 
 export type NotificationRow = {
   id: string
-  kind: 'reminder' | 'new' | 'cancelled' | 'changed' | 'test'
+  kind: 'reminder' | 'new' | 'cancelled' | 'changed' | 'test' | 'motion' | 'agenda' | 'opportunity'
   title: string
   body: string
   link: string | null
@@ -22,6 +22,9 @@ export const KIND_LABEL: Record<NotificationRow['kind'], string> = {
   cancelled: 'CANCELLED',
   changed: 'CHANGED',
   test: 'TEST',
+  motion: 'MOTION',
+  agenda: 'AGENDA',
+  opportunity: 'OPPORTUNITY',
 }
 
 export function currentSupport(): PushSupport {

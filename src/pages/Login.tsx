@@ -1,8 +1,8 @@
 import { useState, type FormEvent } from 'react'
-import { Link, useLocation } from 'react-router'
+import { useLocation } from 'react-router'
 import { PublicOnly } from '../auth/Gate'
 import { useAuth } from '../auth/AuthProvider'
-import { Button, Field, Panel } from '../components'
+import { Button, ButtonLink, Field, Panel } from '../components'
 
 /**
  * Email and password, plus a forgot-password link (MVA-200). No sign-up link: signup is invite-only
@@ -32,7 +32,15 @@ export default function Login() {
       <h1 className="odz-title" style={{ marginBottom: '1rem' }}>
         Sign in
       </h1>
-      <Panel title="Access">
+      <Panel
+        title="Access"
+        footer={
+          <>
+            <ButtonLink to="/forgot-password" variant="sec" small>Forgot password?</ButtonLink>
+            <span>Locked out? Contact Command.</span>
+          </>
+        }
+      >
         {notice && (
           <p role="status" style={{ marginBottom: '1rem' }}>
             {notice}
@@ -63,12 +71,6 @@ export default function Login() {
         ) : (
           <p className="odz-muted">Sign-in is not configured for this build.</p>
         )}
-        <p style={{ marginTop: '1rem' }}>
-          <Link to="/forgot-password">Forgot password?</Link>
-        </p>
-        <p className="odz-muted" style={{ marginTop: '1rem' }}>
-          Locked out? Contact Command.
-        </p>
       </Panel>
     </PublicOnly>
   )

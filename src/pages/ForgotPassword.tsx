@@ -1,7 +1,6 @@
 import { useState, type FormEvent } from 'react'
-import { Link } from 'react-router'
 import { PublicOnly } from '../auth/Gate'
-import { Button, Field, Panel } from '../components'
+import { Button, ButtonLink, Field, Panel } from '../components'
 import { NEUTRAL_RESET_MESSAGE, resetUrl, validateForgot } from '../lib/recovery'
 import { supabase } from '../lib/supabase'
 
@@ -58,7 +57,7 @@ export default function ForgotPassword() {
           <p className="odz-muted">Password reset is not configured for this build.</p>
         )}
         <p className="odz-muted" style={{ marginTop: '1rem' }}>
-          <Link to="/login">Back to sign in</Link>
+          <ButtonLink to="/login" variant="sec" small>Back to sign in</ButtonLink>
         </p>
       </Panel>
     </PublicOnly>
