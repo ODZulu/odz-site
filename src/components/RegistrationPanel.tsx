@@ -21,6 +21,7 @@ import { useLoad } from '../lib/useLoad'
 import { Button, buttonClass } from './Button'
 import { ConfirmAction } from './ConfirmAction'
 import { Field } from './Field'
+import { Panel } from './Panel'
 import { Select } from './Select'
 
 type EventLite = { id: string; title: string; starts_at: string; ends_at: string | null; status: string }
@@ -46,7 +47,11 @@ export function RegistrationToggle({ event, onChanged }: { event: EventLite; onC
   )
 }
 
-export function RegistrationPanel({ event, onChanged }: { event: EventLite; onChanged?: () => void }) {
+/**
+ * `layout="inline"` is the card's one stacked block. `layout="page"` (MVA-301) is the event page: the same
+ * data and actions, split into Registration, Registrants and Attendance panels in that order.
+ */
+export function RegistrationPanel({ event, onChanged, layout = 'inline' }: { event: EventLite; onChanged?: () => void; layout?: 'inline' | 'page' }) {
   const { can } = useAuth()
   const write = can('write_events')
   const info = useLoad(async () => {
@@ -83,14 +88,16 @@ export function RegistrationPanel({ event, onChanged }: { event: EventLite; onCh
   if (!i) return <p className="odz-muted">Registration is not used for this event.</p>
 
   const win = windowState(i, event, now)
-  const kind = withdrawKind(i.my_state, i.withdraw_cutoff_at, now)
+  // Withdrawing only applies before the event starts; on a past or cancelled event the button is not shown.
+  const live = event.status === 'scheduled' && new Date(event.starts_at).getTime() > now.getTime()
+  const kind = live ? withdrawKind(i.my_state, i.withdraw_cutoff_at, now) : 'none'
   const canRegister = (i.my_state === null || i.my_state === 'withdrawn') && (win === 'open' || win === 'full')
   const rows = list.data ?? []
   const requests = rows.filter((r) => r.state === 'withdrawal_requested')
   const ended = attendanceOpen(event, now)
 
-  return (
-    <div className="odz-stack" style={{ marginTop: '0.75rem' }}>
+  const registrationBlock = (
+    <>
       <p>
         {placesLine(i)}.{' '}
         {win === 'not_open' && `Opens ${formatStampPhoenix(i.opens_at)}.`}
@@ -108,7 +115,7 @@ export function RegistrationPanel({ event, onChanged }: { event: EventLite; onCh
           </strong>
         </p>
       )}
-      {i.confirmed && i.my_attendance && <p>Result: {ATTENDANCE_LABEL[i.my_attendance]}</p>}
+      {layout === 'inline' && i.confirmed && i.my_attendance && <p>Result: {ATTENDANCE_LABEL[i.my_attendance]}</p>}
       <div className="odz-row" style={{ gap: '0.5rem' }}>
         {canRegister && (
           <Button small disabled={busy} onClick={() => void call('event_register', { p_event: event.id })}>
@@ -123,11 +130,16 @@ export function RegistrationPanel({ event, onChanged }: { event: EventLite; onCh
         )}
       </div>
       {error && <p role="alert" style={errorStyle}>{error}</p>}
+    </>
+  )
 
+  const registrantsBlock = (
+    <>
       {list.data === null && <p className="odz-muted">The list of registrants is shown to registrants and to Old Guard and Command.</p>}
+      {layout === 'page' && list.data !== null && rows.length === 0 && <p className="odz-muted">No registrants yet.</p>}
       {rows.length > 0 && (
         <div>
-          <p className="odz-label">Registrants</p>
+          {layout === 'inline' && <p className="odz-label">Registrants</p>}
           <ul style={{ margin: 0, paddingLeft: '1.25rem' }}>
             {rows.map((r) => (
               <li key={r.profile_id}>
@@ -147,44 +159,73 @@ export function RegistrationPanel({ event, onChanged }: { event: EventLite; onCh
           {i.no_show_count} no-show, {i.excused_count} excused.
         </p>
       )}
+    </>
+  )
 
-      {write && (
-        <>
-          {requests.length > 0 && (
-            <div>
-              <p className="odz-label">Withdrawal requests</p>
-              {requests.map((r) => (
-                <div key={r.profile_id} className="odz-row" style={{ gap: '0.5rem', flexWrap: 'wrap' }}>
-                  <span>{r.callsign ?? 'Unknown'}</span>
-                  <Button small variant="sec" disabled={busy} onClick={() => void call('event_withdrawal_decide', { p_event: event.id, p_member: r.profile_id, p_approve: true, p_note: null })}>
-                    Approve
-                  </Button>
-                  <Button small variant="sec" disabled={busy} onClick={() => void call('event_withdrawal_decide', { p_event: event.id, p_member: r.profile_id, p_approve: false, p_note: null })}>
-                    Decline
-                  </Button>
-                </div>
-              ))}
+  const commandTools = write && (
+    <>
+      {requests.length > 0 && (
+        <div>
+          <p className="odz-label">Withdrawal requests</p>
+          {requests.map((r) => (
+            <div key={r.profile_id} className="odz-row" style={{ gap: '0.5rem', flexWrap: 'wrap' }}>
+              <span>{r.callsign ?? 'Unknown'}</span>
+              <Button small variant="sec" disabled={busy} onClick={() => void call('event_withdrawal_decide', { p_event: event.id, p_member: r.profile_id, p_approve: true, p_note: null })}>
+                Approve
+              </Button>
+              <Button small variant="sec" disabled={busy} onClick={() => void call('event_withdrawal_decide', { p_event: event.id, p_member: r.profile_id, p_approve: false, p_note: null })}>
+                Decline
+              </Button>
             </div>
-          )}
-          <MemberAction
-            title="Register a member (override)"
-            action="Register"
-            hint="Ignores the window and capacity. The reason is logged."
-            busy={busy}
-            onSubmit={(member, reason) => call('event_register_member', { p_event: event.id, p_member: member, p_reason: reason })}
-          />
-          <Settings event={event} info={i} onDone={() => void Promise.all([info.reload(), list.reload()])} />
-          {ended && (
-            <AttendanceSection
-              event={event}
-              info={i}
-              rows={rows}
-              busy={busy}
-              call={call}
-            />
-          )}
-        </>
+          ))}
+        </div>
       )}
+      <MemberAction
+        title="Register a member (override)"
+        action="Register"
+        hint="Ignores the window and capacity. The reason is logged."
+        busy={busy}
+        onSubmit={(member, reason) => call('event_register_member', { p_event: event.id, p_member: member, p_reason: reason })}
+      />
+      <Settings event={event} info={i} onDone={() => void Promise.all([info.reload(), list.reload()])} />
+    </>
+  )
+
+  const attendanceBlock =
+    write && ended ? <AttendanceSection event={event} info={i} rows={rows} busy={busy} call={call} showLabel={layout === 'inline'} /> : null
+
+  if (layout === 'page') {
+    const mine = i.confirmed && i.my_attendance ? ATTENDANCE_LABEL[i.my_attendance] : null
+    return (
+      <>
+        <Panel title="Registration">
+          <div className="odz-stack">
+            {registrationBlock}
+            {commandTools}
+          </div>
+        </Panel>
+        <Panel title="Registrants">
+          <div className="odz-stack">{registrantsBlock}</div>
+        </Panel>
+        <Panel title="Attendance">
+          <div className="odz-stack">
+            {mine && <p>Your result: {mine}</p>}
+            {attendanceBlock}
+            {!attendanceBlock && !mine && (
+              <p className="odz-muted">{ended ? 'Attendance has not been confirmed yet.' : 'Attendance is recorded after the event.'}</p>
+            )}
+          </div>
+        </Panel>
+      </>
+    )
+  }
+
+  return (
+    <div className="odz-stack" style={{ marginTop: '0.75rem' }}>
+      {registrationBlock}
+      {registrantsBlock}
+      {commandTools}
+      {attendanceBlock}
     </div>
   )
 }
@@ -281,13 +322,14 @@ function MemberAction({
 }
 
 function AttendanceSection({
-  event, info, rows, busy, call,
+  event, info, rows, busy, call, showLabel = true,
 }: {
   event: EventLite
   info: RegistrationInfo
   rows: Registrant[]
   busy: boolean
   call: (fn: string, args: Record<string, unknown>) => Promise<boolean>
+  showLabel?: boolean
 }) {
   const [reason, setReason] = useState('')
   const marking = rows.filter((r) => (r.state === 'registered' || r.state === 'withdrawal_requested') && !r.walk_in)
@@ -297,7 +339,7 @@ function AttendanceSection({
 
   return (
     <div className="odz-stack">
-      <p className="odz-label">Attendance</p>
+      {showLabel && <p className="odz-label">Attendance</p>}
       {info.confirmed ? (
         <>
           <p className="odz-muted">Confirmed. A change needs a reason and is logged.</p>

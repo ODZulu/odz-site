@@ -1,5 +1,5 @@
 import { parseCoordinates } from './geo'
-import { dayKey, formatDateLine, fromLocalInput } from './time'
+import { dayKey, formatDateLine, formatTimeL, fromLocalInput, toLocalInput } from './time'
 import { supabase } from './supabase'
 
 /**
@@ -192,10 +192,11 @@ export async function listEvents(): Promise<EventDetails[]> {
 }
 
 /** One call: the event, its details and its audience are saved together or not at all (MVA-303). */
-export async function createEvent(form: EventForm): Promise<void> {
+export async function createEvent(form: EventForm): Promise<string | null> {
   if (!supabase) throw new Error('events')
-  const { error } = await supabase.rpc('save_event', toSaveArgs(null, form))
+  const { data, error } = await supabase.rpc('save_event', toSaveArgs(null, form))
   if (error) throw new Error('events')
+  return typeof data === 'string' ? data : null // save_event returns the new event's id
 }
 
 export async function updateEvent(id: string, form: EventForm): Promise<void> {
@@ -208,4 +209,89 @@ export async function setEventStatus(id: string, status: EventStatus): Promise<v
   if (!supabase) throw new Error('events')
   const { error } = await supabase.from('events').update({ status }).eq('id', id)
   if (error) throw new Error('events')
+}
+
+/* ---------------------------------------------------------------- the event page (MVA-301) */
+
+/** The type in words, for headers (the list chips keep the short upper-case form). */
+export const EVENT_TYPE_LABEL: Record<EventType, string> = {
+  'Game Day': 'Game day',
+  Op: 'Operation',
+  Training: 'Training',
+  Meeting: 'Meeting',
+  Other: 'Other',
+}
+
+/** The edit form's starting values for an existing event; Duplicate clears the times. */
+export function eventToForm(e: PublicEvent & Partial<EventDetails>, mode: 'edit' | 'duplicate' = 'edit'): EventForm {
+  return {
+    title: e.title,
+    event_type: e.event_type,
+    starts: mode === 'edit' ? toLocalInput(e.starts_at) : '',
+    ends: mode === 'edit' && e.ends_at ? toLocalInput(e.ends_at) : '',
+    location_name: e.location_name ?? '',
+    location_detail: e.location_detail ?? '',
+    description: e.description ?? '',
+    latitude: e.latitude == null ? '' : String(e.latitude),
+    longitude: e.longitude == null ? '' : String(e.longitude),
+    hide_from_public_map: e.hide_from_public_map ?? false,
+    completed: false,
+    audience: (e.audience ?? '') as EventAudience,
+  }
+}
+
+/**
+ * One event by id, with its details when the reader may see them. Null when no row is visible: the
+ * event does not exist, or row-level security hides it from this reader (the page treats both alike).
+ */
+export async function getEvent(id: string, withDetails: boolean): Promise<(PublicEvent & Partial<EventDetails>) | null> {
+  if (!supabase || !/^[0-9a-f-]{36}$/i.test(id)) return null
+  if (!withDetails) {
+    const { data, error } = await supabase.from('events').select('id,title,event_type,starts_at,ends_at,status').eq('id', id).maybeSingle()
+    if (error) throw new Error('events')
+    return (data as PublicEvent | null) ?? null
+  }
+  const { data, error } = await supabase
+    .from('events')
+    .select('id,title,event_type,starts_at,ends_at,status,audience,series_id,series_date,series_edited,source_event_id,cadence_review,event_details(location_name,location_detail,description,latitude,longitude,hide_from_public_map)')
+    .eq('id', id)
+    .maybeSingle()
+  if (error) throw new Error('events')
+  return data ? flattenDetails([data as unknown as EventWithDetails])[0] : null
+}
+
+/** Meetings generated for this event by a prep cadence, soonest first (what the page's timeline lists). */
+export async function listPrepMeetings(eventId: string): Promise<Array<PublicEvent & { description: string | null }>> {
+  if (!supabase) return []
+  const { data, error } = await supabase
+    .from('events')
+    .select('id,title,event_type,starts_at,ends_at,status,description:event_details(description)')
+    .eq('source_event_id', eventId)
+    .order('starts_at')
+  if (error) throw new Error('events')
+  return (data as unknown as Array<PublicEvent & { description: { description: string | null } | null }>).map(({ description, ...e }) => ({
+    ...e,
+    description: description?.description ?? null,
+  }))
+}
+
+/** `0630L-0900L`, or `0630L` with no end time. */
+export function eventTimeRange(e: Pick<PublicEvent, 'starts_at' | 'ends_at'>): string {
+  return `${formatTimeL(e.starts_at)}${e.ends_at ? `-${formatTimeL(e.ends_at)}` : ''}`
+}
+
+const AUDIENCE_WORDS: Record<Exclude<EventAudience, ''>, string> = {
+  members: 'All members',
+  old_guard: 'Old Guard and Command',
+  command: 'Command only',
+}
+
+/** Who the event is for, in words. No audience means the public listing. */
+export function audienceWords(a: EventAudience | null | undefined): string {
+  return a ? AUDIENCE_WORDS[a] : 'Everyone (public)'
+}
+
+/** Whether a past event still shows controls that only make sense before it starts (register, RSVP). */
+export function isOpenForSignup(e: Pick<PublicEvent, 'starts_at' | 'status'>, now: Date): boolean {
+  return e.status === 'scheduled' && new Date(e.starts_at).getTime() > now.getTime()
 }

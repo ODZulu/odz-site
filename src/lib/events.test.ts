@@ -3,7 +3,22 @@ import { describe, expect, it, vi } from 'vitest'
 // The events module imports the Supabase client; keep these tests independent of local env files.
 vi.mock('./supabase', () => ({ supabase: null, isSupabaseConfigured: false }))
 
-import { emptyEventForm, flattenDetails, groupByDay, isPast, splitUpcoming, toSaveArgs, validateEventForm, type EventForm } from './events'
+import {
+  audienceWords,
+  emptyEventForm,
+  eventTimeRange,
+  eventToForm,
+  EVENT_TYPE_LABEL,
+  EVENT_TYPES,
+  flattenDetails,
+  groupByDay,
+  isOpenForSignup,
+  isPast,
+  splitUpcoming,
+  toSaveArgs,
+  validateEventForm,
+  type EventForm,
+} from './events'
 
 const good: EventForm = {
   ...emptyEventForm,
@@ -111,5 +126,41 @@ describe('groupByDay', () => {
     const groups = groupByDay([{ starts_at: '2026-10-10T15:00:00Z' }, { starts_at: '2026-10-10T20:00:00Z' }])
     expect(groups).toHaveLength(1)
     expect(groups[0].label).toBe('SAT 10 OCT 2026')
+  })
+})
+
+describe('event page helpers (MVA-301)', () => {
+  const ev = { id: 'e1', title: 'Fake Op', event_type: 'Op' as const, starts_at: '2026-10-17T13:30:00Z', ends_at: '2026-10-17T17:00:00Z', status: 'scheduled' as const }
+
+  it('names every type in words, never the short form', () => {
+    for (const t of EVENT_TYPES) expect(EVENT_TYPE_LABEL[t]).toBeTruthy()
+    expect(EVENT_TYPE_LABEL.Op).toBe('Operation')
+  })
+  it('formats the time range in Phoenix time', () => {
+    expect(eventTimeRange(ev)).toBe('0630L-1000L')
+    expect(eventTimeRange({ ...ev, ends_at: null })).toBe('0630L')
+  })
+  it('says who an event is for', () => {
+    expect(audienceWords(null)).toBe('Everyone (public)')
+    expect(audienceWords('members')).toBe('All members')
+    expect(audienceWords('command')).toBe('Command only')
+  })
+  it('only an upcoming, scheduled event is open for signup', () => {
+    const now = new Date('2026-10-10T00:00:00Z')
+    expect(isOpenForSignup(ev, now)).toBe(true)
+    expect(isOpenForSignup({ ...ev, status: 'cancelled' }, now)).toBe(false)
+    expect(isOpenForSignup({ ...ev, status: 'completed' }, now)).toBe(false)
+    expect(isOpenForSignup(ev, new Date('2026-10-18T00:00:00Z'))).toBe(false)
+  })
+  it('builds the edit form, and a duplicate form with no times', () => {
+    const e = { ...ev, location_name: 'Fake Field', audience: 'members' as const }
+    expect(eventToForm(e).starts).toBe('2026-10-17T06:30')
+    expect(eventToForm(e).ends).toBe('2026-10-17T10:00')
+    const dup = eventToForm(e, 'duplicate')
+    expect(dup.starts).toBe('')
+    expect(dup.ends).toBe('')
+    expect(dup.title).toBe('Fake Op')
+    expect(dup.audience).toBe('members')
+    expect(dup.completed).toBe(false)
   })
 })
