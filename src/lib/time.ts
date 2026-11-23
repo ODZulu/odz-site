@@ -71,3 +71,24 @@ export function formatPlainDate(value: string): string {
   if (!m) return value
   return `${m[3]} ${MONTHS[Number(m[2]) - 1]} ${m[1]}`
 }
+
+const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+/** `Sat 22 Nov`, with the year (`Sat 22 Nov 2027`) only when it is not the current year (Phoenix). MVA-301. */
+export function formatDayShort(input: string | Date, now: Date = new Date()): string {
+  const p = parts(input)
+  const base = `${p.weekday} ${p.day} ${MONTHS_SHORT[Number(p.month) - 1]}`
+  return p.year === parts(now).year ? base : `${base} ${p.year}`
+}
+
+/**
+ * The one date and time format for events, on the list, the page and HQ (MVA-301):
+ * `Sat 22 Nov, 0800L`, and for a range `Sat 22 Nov, 0800L to 1600L`. An event that ends on another
+ * day names that day too. Phoenix time, 24-hour.
+ */
+export function formatWhen(startsAt: string | Date, endsAt: string | Date | null | undefined, now: Date = new Date()): string {
+  const start = `${formatDayShort(startsAt, now)}, ${formatTimeL(startsAt)}`
+  if (!endsAt) return start
+  if (dayKey(startsAt) === dayKey(endsAt)) return `${start} to ${formatTimeL(endsAt)}`
+  return `${start} to ${formatDayShort(endsAt, now)}, ${formatTimeL(endsAt)}`
+}

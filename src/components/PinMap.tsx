@@ -12,7 +12,7 @@ export type Pin = { lat: number; lng: number }
  * The map (MVA-224). Editable: tap or click to drop the pin, drag it to adjust. Read-only: a small
  * static preview that does not pan or zoom. The pin is always the `value`; the parent owns it and
  * is told through `onPick`, so typing coordinates and tapping the map stay in step. Loaded lazily
- * (see PinFields and EventMapToggle) so the map code never weighs on the rest of the app.
+ * (see PinFields and the event page) so the map code never weighs on the rest of the app.
  */
 export default function PinMap({
   value,

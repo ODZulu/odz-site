@@ -16,7 +16,7 @@ import {
   type RegistrationInfo,
 } from '../lib/registration'
 import { supabase } from '../lib/supabase'
-import { formatStampPhoenix, fromLocalInput, toLocalInput } from '../lib/time'
+import { formatWhen, fromLocalInput, toLocalInput } from '../lib/time'
 import { useLoad } from '../lib/useLoad'
 import { Button, buttonClass } from './Button'
 import { ConfirmAction } from './ConfirmAction'
@@ -26,26 +26,7 @@ import { Select } from './Select'
 
 type EventLite = { id: string; title: string; starts_at: string; ends_at: string | null; status: string }
 
-/** The event ids that use registration (they show this panel instead of RSVP and readiness). */
-export async function listRegistrationEventIds(): Promise<Set<string>> {
-  if (!supabase) return new Set()
-  const { data, error } = await supabase.from('event_registration_settings').select('event_id')
-  if (error) throw new Error('registration')
-  return new Set((data as { event_id: string }[]).map((r) => r.event_id))
-}
-
 const errorStyle = { color: 'var(--alert)' } as const
-
-/** Registration, waitlist and (for Command) settings and attendance, for one event. Members only (RLS). */
-export function RegistrationToggle({ event, onChanged }: { event: EventLite; onChanged?: () => void }) {
-  const [open, setOpen] = useState(false)
-  return (
-    <details onToggle={(e) => setOpen((e.currentTarget as HTMLDetailsElement).open)}>
-      <summary className={buttonClass('sec', true)}>Registration</summary>
-      {open && <RegistrationPanel event={event} onChanged={onChanged} />}
-    </details>
-  )
-}
 
 /**
  * `layout="inline"` is the card's one stacked block. `layout="page"` (MVA-301) is the event page: the same
@@ -100,12 +81,12 @@ export function RegistrationPanel({ event, onChanged, layout = 'inline' }: { eve
     <>
       <p>
         {placesLine(i)}.{' '}
-        {win === 'not_open' && `Opens ${formatStampPhoenix(i.opens_at)}.`}
+        {win === 'not_open' && `Opens ${formatWhen(i.opens_at, null)}.`}
         {win === 'closed' && event.status === 'scheduled' && 'Registration is closed.'}
         {win === 'full' && 'Full: new registrations join the waitlist.'}
       </p>
       <p className="odz-muted">
-        Free withdrawal until {formatStampPhoenix(i.withdraw_cutoff_at)}; after that, Command decides.
+        Free withdrawal until {formatWhen(i.withdraw_cutoff_at, null)}; after that, Command decides.
       </p>
       {i.my_state && (
         <p>
@@ -148,7 +129,7 @@ export function RegistrationPanel({ event, onChanged, layout = 'inline' }: { eve
                 {r.walk_in ? ' (walk-in)' : ''}
                 {r.attendance ? `, ${ATTENDANCE_LABEL[r.attendance]}` : ''}
                 {' · '}
-                {formatStampPhoenix(r.registered_at)}
+                {formatWhen(r.registered_at, null)}
               </li>
             ))}
           </ul>

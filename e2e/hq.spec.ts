@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { admin, cleanup, createEventRow, hasBackend, resetInviteAttempts, seedUser, type SeededUser } from './helpers/backend'
+import { eventPage, openEvent, openEventFromList } from './helpers/events'
 
 test.skip(!hasBackend, 'needs a local Supabase stack (see docs/TESTING.md)')
 
@@ -77,10 +78,8 @@ test('RSVP: members answer, readiness counts follow, and a past event is closed'
   const past = await createEventRow({ title: 'E2E Past Event', inDays: -2 })
   void past
   await signIn(page, mem)
-  await page.goto('/calendar')
-
-  const card = page.locator('article', { hasText: upcoming.title })
-  await card.getByText('RSVP and readiness').click()
+  // MVA-301: the answer is given on the event page, reached from the list.
+  const card = await openEvent(page, upcoming.title)
   await card.getByRole('button', { name: 'IN', exact: true }).click()
   await expect(card.getByRole('button', { name: 'IN', exact: true })).toHaveAttribute('aria-pressed', 'true')
   await expect(card.getByText(/1 \/ \d+ IN/)).toBeVisible()
@@ -88,8 +87,21 @@ test('RSVP: members answer, readiness counts follow, and a past event is closed'
   await card.getByRole('button', { name: 'OUT', exact: true }).click()
   await expect(card.getByRole('button', { name: 'OUT', exact: true })).toHaveAttribute('aria-pressed', 'true')
 
+  await page.goto('/calendar')
   await page.getByText(/Past events/).click()
-  const pastCard = page.locator('article', { hasText: 'E2E Past Event' })
-  await pastCard.getByText('RSVP and readiness').click()
-  await expect(pastCard.getByRole('button', { name: 'IN', exact: true })).toBeDisabled()
+  await openEventFromList(page, 'E2E Past Event')
+  await expect(eventPage(page).getByRole('button', { name: 'IN', exact: true })).toBeDisabled()
+})
+
+test('HQ schedule rows and the next-event title open the event page (MVA-301)', async ({ page }) => {
+  const mem = await seedUser('member', 'hq-link')
+  const ev = await createEventRow({ title: 'E2E HQ Link Event', inDays: 1 })
+  await signIn(page, mem)
+  await page.goto('/hq')
+  const schedule = page.locator('section.odz-panel').filter({ has: page.getByRole('heading', { name: 'Schedule' }) })
+  const row = schedule.getByRole('link', { name: /E2E HQ Link Event/ })
+  await expect(row).toHaveAttribute('href', `/events/${ev.id}`)
+  await row.click()
+  await expect(page).toHaveURL(new RegExp(`/events/${ev.id}$`))
+  await expect(page.getByRole('heading', { level: 1, name: ev.title })).toBeVisible()
 })

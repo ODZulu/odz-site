@@ -21,7 +21,7 @@ import {
   type SeriesForm,
 } from '../lib/recurrence'
 import { supabase } from '../lib/supabase'
-import { formatDateLine, formatTimeL } from '../lib/time'
+import { formatWhen } from '../lib/time'
 import { useLoad } from '../lib/useLoad'
 
 const TEAM_TIMEZONE = 'America/Phoenix' // the team setting; each series stores its own
@@ -80,7 +80,7 @@ export function SeriesPanel({ onChanged }: { onChanged: () => void }) {
                 <p>{describeRule(s)} at {s.start_time.slice(0, 5)} ({s.timezone}), {s.duration_minutes} min</p>
                 <p className="odz-muted">
                   For: {AUDIENCE_LABEL[s.audience]}
-                  {s.status === 'active' && ` · Next: ${s.next_starts_at ? `${formatDateLine(s.next_starts_at)} ${formatTimeL(s.next_starts_at)}` : 'none in the next 90 days'}`}
+                  {s.status === 'active' && ` · Next: ${s.next_starts_at ? formatWhen(s.next_starts_at, null) : 'none in the next 90 days'}`}
                 </p>
                 {s.status === 'active' && (
                   <div className="odz-row" style={{ gap: '0.5rem' }}>

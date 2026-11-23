@@ -57,6 +57,7 @@ export default function App() {
     <Routes>
       <Route path="/" element={<Landing />} />
       <Route path="/calendar" element={<PublicOrShell><Calendar /></PublicOrShell>} />
+      <Route path="/events/new" element={<PublicOrShell><EventEditPage mode="new" /></PublicOrShell>} />
       <Route path="/events/:eventId" element={<PublicOrShell><EventPage /></PublicOrShell>} />
       <Route path="/events/:eventId/edit" element={<PublicOrShell><EventEditPage mode="edit" /></PublicOrShell>} />
       <Route path="/events/:eventId/duplicate" element={<PublicOrShell><EventEditPage mode="duplicate" /></PublicOrShell>} />

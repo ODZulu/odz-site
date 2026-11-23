@@ -35,12 +35,13 @@ async function signOutFrom(page: Page, path: string) {
 
 test('signing out from HQ, the calendar and a profile page lands on the login page with no member data', async ({ page }) => {
   const member = await seedUser('member', 'out-mem')
-  await createEventRow({ title: 'E2E Fake Logout Event', location: WHERE, detail: 'E2E Fake gate note', inDays: 3 })
+  const ev = await createEventRow({ title: 'E2E Fake Logout Event', location: WHERE, detail: 'E2E Fake gate note', inDays: 3 })
 
-  for (const path of ['/hq', '/calendar', '/me']) {
+  // MVA-301: the location is on the event page now, not on the calendar card, so the event page is a path too.
+  for (const path of ['/hq', '/calendar', '/me', `/events/${ev.id}`]) {
     await signIn(page, member)
-    if (path === '/calendar') {
-      await page.goto('/calendar')
+    if (path.startsWith('/events/')) {
+      await page.goto(path)
       await expect(page.getByText(WHERE).first()).toBeVisible() // member data is on screen before signing out
     }
     await signOutFrom(page, path)
@@ -50,9 +51,9 @@ test('signing out from HQ, the calendar and a profile page lands on the login pa
 test('after signing out, Back does not show member pages or data', async ({ page }) => {
   const member = await seedUser('member', 'out-back')
   const where = 'E2E Fake Back Field' // its own text: the other tests' events are still in the database
-  await createEventRow({ title: 'E2E Fake Back Event', location: where, inDays: 3 })
+  const ev = await createEventRow({ title: 'E2E Fake Back Event', location: where, inDays: 3 })
   await signIn(page, member)
-  await page.goto('/calendar')
+  await page.goto(`/events/${ev.id}`) // MVA-301: the location is shown on the event page
   await expect(page.getByText(where)).toBeVisible()
   await page.getByRole('button', { name: 'Sign out' }).click()
   await expect(page).toHaveURL(/\/login$/)

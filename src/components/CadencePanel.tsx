@@ -24,7 +24,7 @@ import {
 import { EVENT_TYPES } from '../lib/events'
 import { AUDIENCE_LABEL, AUDIENCES, type Audience } from '../lib/recurrence'
 import { supabase } from '../lib/supabase'
-import { formatDateLine, formatTimeL } from '../lib/time'
+import { formatWhen } from '../lib/time'
 import { useLoad } from '../lib/useLoad'
 
 const err = { color: 'var(--alert)' } as const
@@ -261,7 +261,7 @@ function ApplyCadenceOpen({ eventId, onDone, onClose }: { eventId: string; onDon
         <ol style={{ margin: 0, paddingLeft: '1.25rem' }}>
           {plan.map((p) => (
             <li key={p.step_id}>
-              {p.step_title}: {formatDateLine(p.new_starts_at)} {formatTimeL(p.new_starts_at)} · {ACTION_LABEL[p.action]}
+              {p.step_title}: {formatWhen(p.new_starts_at, null)} · {ACTION_LABEL[p.action]}
             </li>
           ))}
         </ol>
