@@ -4,13 +4,11 @@ import { useAuth } from '../auth/AuthProvider'
 import { Button, ButtonLink, Chip, ConfirmAction, KeyValue, Panel } from '../components'
 import { buttonClass } from '../components/Button'
 import { ApplyCadence } from '../components/CadencePanel'
-import { EventEditor, type Editing } from '../components/EventEditor'
 import { RegistrationPanel } from '../components/RegistrationPanel'
 import { RsvpPanel } from '../components/RsvpPanel'
 import {
   audienceWords,
   eventTimeRange,
-  eventToForm,
   EVENT_TYPE_LABEL,
   getEvent,
   isOpenForSignup,
@@ -66,7 +64,6 @@ export default function EventPage() {
   const detail = can('read_event_details')
   const write = can('write_events')
   const data = useLoad(() => load(eventId, detail), [eventId, detail])
-  const [editing, setEditing] = useState<Editing | null>(null)
   const [failure, setFailure] = useState<string | null>(null)
 
   if (data.loading) {
@@ -159,12 +156,12 @@ export default function EventPage() {
 
       {write && (
         <div className="odz-row" style={{ gap: '0.5rem', flexWrap: 'wrap' }}>
-          <Button small variant="sec" onClick={() => setEditing({ id: e.id, form: eventToForm(e), seriesId: e.series_id ?? null })}>
+          <ButtonLink to={`/events/${e.id}/edit`} state={{ fromEvent: true }} variant="sec" small>
             Edit
-          </Button>
-          <Button small variant="sec" onClick={() => setEditing({ id: null, form: eventToForm(e, 'duplicate') })}>
+          </ButtonLink>
+          <ButtonLink to={`/events/${e.id}/duplicate`} variant="sec" small>
             Duplicate
-          </Button>
+          </ButtonLink>
           {e.status === 'scheduled' && !e.source_event_id && <ApplyCadence eventId={e.id} onDone={() => void data.reload()} />}
           {e.cadence_review && (
             <Button small variant="sec" onClick={() => void markReviewed()}>
@@ -190,20 +187,6 @@ export default function EventPage() {
         <p role="alert" style={{ color: 'var(--alert)', margin: 0 }}>
           {failure}
         </p>
-      )}
-
-      {editing && (
-        <EventEditor
-          key={editing.id ?? 'duplicate'}
-          initial={editing}
-          onClose={() => setEditing(null)}
-          onSaved={async () => {
-            const wasEdit = editing.id !== null
-            setEditing(null)
-            if (wasEdit) await data.reload()
-            else navigate('/calendar') // a duplicate is a new event; the list is where it shows up
-          }}
-        />
       )}
 
       <Panel title="When and where">

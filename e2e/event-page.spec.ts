@@ -35,7 +35,7 @@ test('a Member opens the event page directly and sees the sections in order', as
   const order = ['When and where', 'Details', 'Registration'].map((h) => headings.findIndex((x) => x.toLowerCase() === h.toLowerCase()))
   expect(order.every((i) => i >= 0)).toBe(true)
   expect([...order].sort((a, b) => a - b)).toEqual(order)
-  await expect(page.getByRole('button', { name: 'Edit' })).toHaveCount(0)
+  await expect(page.getByRole('link', { name: 'Edit' })).toHaveCount(0)
 })
 
 test('a signed-out visitor is sent to login for a member event', async ({ page }) => {
@@ -61,17 +61,64 @@ test('an unknown event id says not found', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Event not found' })).toBeVisible()
 })
 
-test('Admin edits and cancels from the page', async ({ page }) => {
+test('Admin edits from the event page on its own edit page, and cancels', async ({ page }) => {
   const ev = await createEventRow({ location: SECRET_LOCATION })
   await signIn(page, await seedUser('admin', 'evp-adm'))
   await page.goto(`/events/${ev.id}`)
-  await page.getByRole('button', { name: 'Edit' }).click()
+  await page.getByRole('link', { name: 'Edit' }).click()
+  // Its own page: heading first, focus in the form.
+  await expect(page).toHaveURL(new RegExp(`/events/${ev.id}/edit$`))
+  await expect(page.getByRole('heading', { level: 1, name: 'Edit event' })).toBeVisible()
+  await expect(page.getByLabel('Title')).toBeFocused()
   await page.getByLabel('Title').fill(`${ev.title} renamed`)
   await page.getByRole('button', { name: 'Save event' }).click()
+  // Save returns to the event page.
+  await expect(page).toHaveURL(new RegExp(`/events/${ev.id}$`))
   await expect(page.getByRole('heading', { level: 1, name: `${ev.title} renamed` })).toBeVisible()
   await page.getByRole('button', { name: 'Cancel event' }).click()
   await page.getByRole('button', { name: 'Confirm cancel' }).click()
   await expect(page.getByText('CANCELLED', { exact: true })).toBeVisible()
+})
+
+test('Close on the edit page returns to the event page, with nothing saved', async ({ page }) => {
+  const ev = await createEventRow()
+  await signIn(page, await seedUser('admin', 'evp-close'))
+  await page.goto(`/events/${ev.id}`)
+  await page.getByRole('link', { name: 'Edit' }).click()
+  await page.getByLabel('Title').fill('E2E not saved')
+  await page.getByRole('button', { name: 'Close' }).click()
+  await expect(page).toHaveURL(new RegExp(`/events/${ev.id}$`))
+  await expect(page.getByRole('heading', { level: 1, name: ev.title })).toBeVisible()
+})
+
+test('Duplicate opens its own page with the times cleared and saves a new event', async ({ page }) => {
+  const ev = await createEventRow()
+  await signIn(page, await seedUser('admin', 'evp-dup'))
+  await page.goto(`/events/${ev.id}`)
+  await page.getByRole('link', { name: 'Duplicate' }).click()
+  await expect(page).toHaveURL(new RegExp(`/events/${ev.id}/duplicate$`))
+  await expect(page.getByRole('heading', { level: 1, name: 'Duplicate event' })).toBeVisible()
+  await expect(page.getByLabel('Starts (Phoenix time)')).toHaveValue('')
+  await page.getByLabel('Starts (Phoenix time)').fill('2030-02-15T06:30')
+  await page.getByRole('button', { name: 'Save event' }).click()
+  await expect(page).toHaveURL(/\/events\/[0-9a-f-]{36}$/)
+  await expect(page).not.toHaveURL(new RegExp(ev.id))
+  await expect(page.getByRole('heading', { level: 1, name: ev.title })).toBeVisible()
+})
+
+test('a Member sent to the edit URL lands on the event page, with no form', async ({ page }) => {
+  const ev = await createEventRow()
+  await signIn(page, await seedUser('member', 'evp-noedit'))
+  await page.goto(`/events/${ev.id}/edit`)
+  await expect(page).toHaveURL(new RegExp(`/events/${ev.id}$`))
+  await expect(page.getByLabel('Title')).toHaveCount(0)
+})
+
+test('a signed-out visitor sent to the edit URL ends up at login for a member event', async ({ page }) => {
+  const ev = await createEventRow()
+  await admin().from('events').update({ audience: 'members' }).eq('id', ev.id)
+  await page.goto(`/events/${ev.id}/edit`)
+  await expect(page).toHaveURL(/\/login$/)
 })
 
 test('a past event shows no register or withdraw controls', async ({ page }) => {

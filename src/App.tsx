@@ -5,6 +5,7 @@ import { AppShell, GateLayout, PublicFrame } from './components'
 import { useAuth } from './auth/AuthProvider'
 import { homeFor } from './lib/access'
 import Calendar from './pages/Calendar'
+import EventEditPage from './pages/EventEditPage'
 import EventPage from './pages/EventPage'
 import AgendaPage from './pages/AgendaPage'
 import AdminLayout from './pages/admin/AdminLayout'
@@ -57,6 +58,8 @@ export default function App() {
       <Route path="/" element={<Landing />} />
       <Route path="/calendar" element={<PublicOrShell><Calendar /></PublicOrShell>} />
       <Route path="/events/:eventId" element={<PublicOrShell><EventPage /></PublicOrShell>} />
+      <Route path="/events/:eventId/edit" element={<PublicOrShell><EventEditPage mode="edit" /></PublicOrShell>} />
+      <Route path="/events/:eventId/duplicate" element={<PublicOrShell><EventEditPage mode="duplicate" /></PublicOrShell>} />
       <Route element={<GateLayout />}>
         <Route path="/login" element={<Login />} />
         <Route path="/join/:code?" element={<Join />} />

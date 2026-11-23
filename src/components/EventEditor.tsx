@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import {
   createEvent,
   EVENT_TYPES,
@@ -26,11 +26,22 @@ export function EventEditor({
   initial,
   onSaved,
   onClose,
+  panelTitle,
+  autoFocus = false,
 }: {
   initial: Editing
-  onSaved: () => void | Promise<void>
+  /** Runs after a save, with the saved event's id (null if the database did not return one). */
+  onSaved: (id: string | null) => void | Promise<void>
   onClose: () => void
+  /** Overrides the panel heading (a page that already has its own h1 uses this). */
+  panelTitle?: string
+  /** Put focus in the first field on mount. */
+  autoFocus?: boolean
 }) {
+  const box = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (autoFocus) box.current?.querySelector('input')?.focus()
+  }, [autoFocus])
   const [editing, setEditing] = useState(initial)
   const [errors, setErrors] = useState<EventErrors>({})
   const [failure, setFailure] = useState<string | null>(null)
@@ -47,9 +58,10 @@ export function EventEditor({
     setBusy(true)
     setFailure(null)
     try {
+      let id = editing.id
       if (editing.id) await updateEvent(editing.id, editing.form)
-      else await createEvent(editing.form)
-      await onSaved()
+      else id = await createEvent(editing.form)
+      await onSaved(id)
     } catch {
       setFailure('Could not save the event.')
       setBusy(false)
@@ -57,7 +69,8 @@ export function EventEditor({
   }
 
   return (
-    <Panel title={editing.id ? 'Edit event' : 'New event'}>
+    <Panel title={panelTitle ?? (editing.id ? 'Edit event' : 'New event')}>
+      <div ref={box}>
       <form onSubmit={save} noValidate style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
         <Field label="Title" maxLength={120} value={editing.form.title} onChange={set('title')} error={errors.title} />
         <Select
@@ -107,6 +120,7 @@ export function EventEditor({
           </Button>
         </div>
       </form>
+      </div>
     </Panel>
   )
 }

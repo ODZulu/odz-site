@@ -192,10 +192,11 @@ export async function listEvents(): Promise<EventDetails[]> {
 }
 
 /** One call: the event, its details and its audience are saved together or not at all (MVA-303). */
-export async function createEvent(form: EventForm): Promise<void> {
+export async function createEvent(form: EventForm): Promise<string | null> {
   if (!supabase) throw new Error('events')
-  const { error } = await supabase.rpc('save_event', toSaveArgs(null, form))
+  const { data, error } = await supabase.rpc('save_event', toSaveArgs(null, form))
   if (error) throw new Error('events')
+  return typeof data === 'string' ? data : null // save_event returns the new event's id
 }
 
 export async function updateEvent(id: string, form: EventForm): Promise<void> {
