@@ -1,9 +1,11 @@
+import type { ReactNode } from 'react'
 import { Navigate, Route, Routes } from 'react-router'
 import { Gate } from './auth/Gate'
 import { AppShell, GateLayout, PublicFrame } from './components'
 import { useAuth } from './auth/AuthProvider'
 import { homeFor } from './lib/access'
 import Calendar from './pages/Calendar'
+import EventPage from './pages/EventPage'
 import AgendaPage from './pages/AgendaPage'
 import AdminLayout from './pages/admin/AdminLayout'
 import Audit from './pages/admin/Audit'
@@ -38,19 +40,11 @@ import RosterDetail from './pages/RosterDetail'
 import Setup from './pages/Setup'
 import Traffic from './pages/Traffic'
 
-/** The calendar is public: signed-in members get the full shell, everyone else the public frame. */
-function CalendarRoute() {
+/** The calendar and the event page are public: signed-in members get the full shell, everyone else the public frame. */
+function PublicOrShell({ children }: { children: ReactNode }) {
   const { access } = useAuth()
   if (access.loading) return null
-  return homeFor(access) === '/hq' ? (
-    <AppShell>
-      <Calendar />
-    </AppShell>
-  ) : (
-    <PublicFrame>
-      <Calendar />
-    </PublicFrame>
-  )
+  return homeFor(access) === '/hq' ? <AppShell>{children}</AppShell> : <PublicFrame>{children}</PublicFrame>
 }
 
 /**
@@ -61,7 +55,8 @@ export default function App() {
   return (
     <Routes>
       <Route path="/" element={<Landing />} />
-      <Route path="/calendar" element={<CalendarRoute />} />
+      <Route path="/calendar" element={<PublicOrShell><Calendar /></PublicOrShell>} />
+      <Route path="/events/:eventId" element={<PublicOrShell><EventPage /></PublicOrShell>} />
       <Route element={<GateLayout />}>
         <Route path="/login" element={<Login />} />
         <Route path="/join/:code?" element={<Join />} />
